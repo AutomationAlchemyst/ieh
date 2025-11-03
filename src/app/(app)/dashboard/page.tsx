@@ -55,25 +55,25 @@ const chartData = [
   { name: "Dec", total: 0 },
 ];
 
-const AdminDashboard = ({ allUsers, allCourses, recentUsers }: { allUsers: User[], allCourses: Course[], recentUsers: User[] }) => (
+const AdminDashboard = ({ allUsers, allCourses, recentUsers, teachers, students }: { allUsers: User[], allCourses: Course[], recentUsers: User[], teachers: User[], students: any[] }) => (
   <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
     <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:col-span-2">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+          <CardTitle className="text-sm font-medium">Total Asatizah</CardTitle>
           <Users className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{allUsers.length}</div>
+          <div className="text-2xl font-bold">{teachers.length}</div>
         </CardContent>
       </Card>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Courses</CardTitle>
+          <CardTitle className="text-sm font-medium">Total Students</CardTitle>
           <BookOpen className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{allCourses.length}</div>
+          <div className="text-2xl font-bold">{students.length}</div>
         </CardContent>
       </Card>
       <Card className="col-span-1 md:col-span-2">
@@ -209,11 +209,14 @@ export default function Dashboard() {
 
   const coursesCollectionRef = useMemoFirebase(() => collection(firestore, "courses"), [firestore]);
   const { data: allCourses, isLoading: areCoursesLoading } = useCollection<Course>(coursesCollectionRef);
+
+  const registrationsCollectionRef = useMemoFirebase(() => collection(firestore, "registrations"), [firestore]);
+  const { data: allRegistrations, isLoading: areRegistrationsLoading } = useCollection<any>(registrationsCollectionRef);
   
   const recentUsersQuery = useMemoFirebase(() => query(usersCollectionRef, orderBy("createdAt", "desc"), limit(5)), [usersCollectionRef]);
   const { data: recentUsers, isLoading: areRecentUsersLoading } = useCollection<User>(recentUsersQuery);
 
-  const isLoading = isAuthLoading || isProfileLoading || areUsersLoading || areCoursesLoading || areRecentUsersLoading;
+  const isLoading = isAuthLoading || isProfileLoading || areUsersLoading || areCoursesLoading || areRecentUsersLoading || areRegistrationsLoading;
 
   if (isLoading) {
     return (
@@ -235,11 +238,14 @@ export default function Dashboard() {
     return <p>Could not load user profile. Please try again.</p>;
   }
 
+  const teachers = allUsers ? allUsers.filter(u => u.role === 'teacher') : [];
+  const students = allRegistrations || [];
+
   const userInitials = userProfile.name.split(' ').map(n => n[0]).join('');
 
   const dashboardViews: { [key: string]: React.ReactNode } = {
-    admin: <AdminDashboard allUsers={allUsers || []} allCourses={allCourses || []} recentUsers={recentUsers || []} />,
-    management: <AdminDashboard allUsers={allUsers || []} allCourses={allCourses || []} recentUsers={recentUsers || []} />,
+    admin: <AdminDashboard allUsers={allUsers || []} allCourses={allCourses || []} recentUsers={recentUsers || []} teachers={teachers} students={students} />,
+    management: <AdminDashboard allUsers={allUsers || []} allCourses={allCourses || []} recentUsers={recentUsers || []} teachers={teachers} students={students} />,
     teacher: <TeacherDashboard currentUser={userProfile} allCourses={allCourses || []} />,
     student: <StudentDashboard currentUser={userProfile} allCourses={allCourses || []} />,
   };
