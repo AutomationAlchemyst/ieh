@@ -63,6 +63,22 @@ const formSchema = z.object({
   // Consents
   mediaConsent: z.boolean().refine(val => val === true, { message: "You must consent to the media recording and publicity terms." }),
   pdpaConsent: z.boolean().refine(val => val === true, { message: "You must consent to the PDPA terms." }),
+})
+.refine(data => !data.registeringApplicant2 || (data.registeringApplicant2 && data.applicant2), {
+  message: "Applicant 2 details are required.",
+  path: ["applicant2"],
+})
+.refine(data => !data.registeringApplicant3 || (data.registeringApplicant3 && data.applicant3), {
+  message: "Applicant 3 details are required.",
+  path: ["applicant3"],
+})
+.refine(data => !data.registeringApplicant4 || (data.registeringApplicant4 && data.applicant4), {
+  message: "Applicant 4 details are required.",
+  path: ["applicant4"],
+})
+.refine(data => !data.registeringApplicant5 || (data.registeringApplicant5 && data.applicant5), {
+  message: "Applicant 5 details are required.",
+  path: ["applicant5"],
 });
 
 export function BeneficiaryRegistrationForm() {
