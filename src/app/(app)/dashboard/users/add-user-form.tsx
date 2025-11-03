@@ -28,7 +28,7 @@ import { useRouter } from "next/navigation";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import { useFirestore, addDocumentNonBlocking } from "@/firebase";
+import { useFirestore, addDocumentNonBlocking, useUser } from "@/firebase";
 
 const availableDays = [
   { id: "monday", label: "Monday" },
@@ -113,7 +113,17 @@ export function AddUserForm({ defaultRole }: { defaultRole?: UserRole }) {
 
   const isAsatizahForm = defaultRole === "teacher";
 
+    const { user } = useUser();
+
   function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!user) {
+        toast({
+            variant: "destructive",
+            title: "Authentication Error",
+            description: "You must be logged in to create a user. Please log in and try again.",
+        });
+        return;
+    }
     if (!firestore) {
         toast({
             variant: "destructive",
