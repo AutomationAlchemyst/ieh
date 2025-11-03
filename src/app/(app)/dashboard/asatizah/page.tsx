@@ -27,9 +27,8 @@ export default function AsatizahPage() {
   const asatizahQuery = useMemoFirebase(() => query(usersCollection, where("role", "==", "teacher")), [usersCollection]);
   
     const { user, isUserLoading: isAuthLoading } = useUser();
-  const { data: asatizah, isLoading: isDataLoading } = useCollection<User>(
-    asatizahQuery,
-    { skip: !user } // Skip query if user is not authenticated
+    const { data: asatizah, isLoading: isDataLoading } = useCollection<User>(
+    user ? asatizahQuery : null
   );
 
   const isLoading = isAuthLoading || isDataLoading;
