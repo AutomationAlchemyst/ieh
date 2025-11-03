@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { collection } from "firebase/firestore";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { DataTable } from "../users/data-table";
+import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import {
   Card,
