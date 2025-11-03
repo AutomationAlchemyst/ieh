@@ -18,7 +18,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AddUserForm } from "../users/add-user-form";
+import { BeneficiaryRegistrationForm } from "./beneficiary-registration-form";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function StudentsPage() {
@@ -51,7 +51,7 @@ export default function StudentsPage() {
                         Fill in the details below to create a new student account.
                     </DialogDescription>
                 </DialogHeader>
-                <AddUserForm defaultRole="student" />
+                <BeneficiaryRegistrationForm />
             </DialogContent>
         </Dialog>
       </div>
