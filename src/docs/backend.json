@@ -1,0 +1,339 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user in the Ihsan Education Hub Portal.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address.",
+          "format": "email"
+        },
+        "name": {
+          "type": "string",
+          "description": "User's full name as per NRIC."
+        },
+        "role": {
+          "type": "string",
+          "description": "User's role (admin, management, teacher, student)."
+        },
+        "avatar": {
+          "type": "string",
+          "format": "uri"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Active", "Inactive"]
+        },
+        "contactNo": {
+          "type": "string"
+        },
+        "gender": {
+          "type": "string",
+          "enum": ["Male", "Female"]
+        },
+        "preferredLocations": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "availableDays": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "preferredTimeslots": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "referralSource": {
+          "type": "string"
+        },
+        "preferredAudience": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "preferredSyllabus": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "canTeachSpecialNeeds": {
+          "type": "string",
+          "enum": ["Yes", "No"]
+        },
+        "payNow": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "name",
+        "role",
+        "createdAt"
+      ]
+    },
+    "Course": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Course",
+      "type": "object",
+      "description": "Represents a course in the LMS.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Course entity."
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the course."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the course."
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description"
+      ]
+    },
+    "Module": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Module",
+      "type": "object",
+      "description": "Represents a module within a course.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Module entity."
+        },
+        "courseId": {
+          "type": "string",
+          "description": "Reference to Course. (Relationship: Course 1:N Module)"
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the module."
+        },
+        "order": {
+          "type": "number",
+          "description": "The order of the module within the course."
+        }
+      },
+      "required": [
+        "id",
+        "courseId",
+        "title",
+        "order"
+      ]
+    },
+    "UlumiGroup": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UlumiGroup",
+      "type": "object",
+      "description": "Represents an Ulumi group.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UlumiGroup entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the Ulumi group."
+        },
+        "meetingLocation": {
+          "type": "string",
+          "description": "Location where the Ulumi group meets."
+        },
+        "asatizahId": {
+          "type": "string",
+          "description": "Reference to User (Asatizah). (Relationship: User 1:N UlumiGroup)"
+        },
+        "studentIds": {
+          "type": "array",
+          "description": "References to Users (Students). (Relationship: UlumiGroup 1:N User)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "meetingLocation",
+        "asatizahId"
+      ]
+    },
+    "Enrollment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Enrollment",
+      "type": "object",
+      "description": "Represents the enrollment of a student in a course.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Enrollment entity."
+        },
+        "studentId": {
+          "type": "string",
+          "description": "Reference to User (Student). (Relationship: User 1:N Enrollment)"
+        },
+        "courseId": {
+          "type": "string",
+          "description": "Reference to Course. (Relationship: Course 1:N Enrollment)"
+        },
+        "enrollmentDate": {
+          "type": "string",
+          "description": "Date of enrollment.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "studentId",
+        "courseId",
+        "enrollmentDate"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. Accessible only to the user themselves or admins.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/courses/{courseId}",
+        "definition": {
+          "entityName": "Course",
+          "schema": {
+            "$ref": "#/backend/entities/Course"
+          },
+          "description": "Stores course information. Accessible to any logged-in user for reading, but restricted to admin roles for creation/modification.",
+          "params": [
+            {
+              "name": "courseId",
+              "description": "The unique identifier of the course."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/courses/{courseId}/modules/{moduleId}",
+        "definition": {
+          "entityName": "Module",
+          "schema": {
+            "$ref": "#/backend/entities/Module"
+          },
+          "description": "Stores modules associated with courses. Inherits authorization from the parent course, with additional restrictions on creation/modification.",
+          "params": [
+            {
+              "name": "courseId",
+              "description": "The unique identifier of the course."
+            },
+            {
+              "name": "moduleId",
+              "description": "The unique identifier of the module."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/ulumi_groups/{ulumiGroupId}",
+        "definition": {
+          "entityName": "UlumiGroup",
+          "schema": {
+            "$ref": "#/backend/entities/UlumiGroup"
+          },
+          "description": "Stores Ulumi group information. Access control is managed via the `asatizahId` field.",
+          "params": [
+            {
+              "name": "ulumiGroupId",
+              "description": "The unique identifier of the Ulumi group."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/ulumiGroups/{ulumiGroupId}",
+        "definition": {
+          "entityName": "UlumiGroup",
+          "schema": {
+            "$ref": "#/backend/entities/UlumiGroup"
+          },
+          "description": "Stores Ulumi groups specific to students. Includes denormalized 'members' map for authorization independence. This subcollection serves as a join between users and Ulumi groups, enabling QAPs based on a user's membership in a group.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user (student)."
+            },
+            {
+              "name": "ulumiGroupId",
+              "description": "The unique identifier of the Ulumi group."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/enrollments/{enrollmentId}",
+        "definition": {
+          "entityName": "Enrollment",
+          "schema": {
+            "$ref": "#/backend/entities/Enrollment"
+          },
+          "description": "Stores enrollments. Student and Admin roles are checked for enrollment access.",
+          "params": [
+            {
+              "name": "enrollmentId",
+              "description": "The unique identifier of the enrollment."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Documents in this collection indicate that the user has admin privileges. Existence-based access control.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to provide a secure, scalable, and easily debuggable backend for the Ihsan Education Hub Portal. The structure adheres to the principles of Authorization Independence, Clarity of Intent, DBAC (Database-Based Access Control), and QAPs (Queries are not Filters). It leverages denormalization and structural segregation to simplify security rules and optimize performance.\n\n**Authorization Independence:**\n\n*   Authorization context is denormalized into subcollections where needed. For example, the `UlumiGroup` entity stores `asatizahId` directly within the document, and the `/users/{userId}/ulumiGroups/{ulumiGroupId}` collection stores a denormalized `members` map, eliminating the need for `get()` calls in security rules and enabling atomic operations.\n\n**QAPs (Rules are not Filters):**\n\n*   Structural segregation ensures that collections contain documents with homogeneous security requirements. This enables secure list operations without complex filtering in rules.\n\n**Structure Overview:**\n\n*   `/users/{userId}`: Stores user profiles. Uses path-based ownership for private user data.\n*   `/courses/{courseId}`: Stores course information. Open to any logged-in user for reading, but restricted for creation/modification to admin roles.\n*   `/courses/{courseId}/modules/{moduleId}`: Stores modules associated with courses. Inherits authorization from the parent course, with additional restrictions on creation/modification.\n*   `/ulumi_groups/{ulumiGroupId}`: Stores ulumi group information. Access control is managed via the `asatizahId` field.\n*   `/users/{userId}/ulumiGroups/{ulumiGroupId}`: Stores ulumi groups specific to students. Includes denormalized `members` field to determine access to Ulumi group details. This subcollection serves as a join between users and Ulumi groups, enabling QAPs based on a user's membership in a group.\n*   `/enrollments/{enrollmentId}`: Stores enrollments. Student and Admin roles are checked for enrollment access.\n*   `/roles_admin/{userId}`: Documents in this collection indicate that the user has admin privileges. Existence-based access control."
+  }
+}
