@@ -1,12 +1,13 @@
 "use client";
 
+import { useMemo } from "react";
+import { doc, collection, query, orderBy, limit } from "firebase/firestore";
+import { useUser, useDoc, useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import type { User, Course } from "@/lib/data";
+import { Skeleton } from "@/components/ui/skeleton";
+
 import {
-  Activity,
-  ArrowUpRight,
   BookOpen,
-  CreditCard,
-  DollarSign,
-  GraduationCap,
   Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -15,7 +16,6 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -40,24 +40,22 @@ import {
   YAxis,
 } from "recharts";
 
-import { courses, getCurrentUser, users } from "@/lib/data";
-
 const chartData = [
-  { name: "Jan", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Feb", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Mar", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Apr", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "May", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Jun", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Jul", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Aug", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Sep", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Oct", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Nov", total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: "Dec", total: Math.floor(Math.random() * 5000) + 1000 },
+  { name: "Jan", total: 0 },
+  { name: "Feb", total: 0 },
+  { name: "Mar", total: 0 },
+  { name: "Apr", total: 0 },
+  { name: "May", total: 0 },
+  { name: "Jun", total: 0 },
+  { name: "Jul", total: 0 },
+  { name: "Aug", total: 0 },
+  { name: "Sep", total: 0 },
+  { name: "Oct", total: 0 },
+  { name: "Nov", total: 0 },
+  { name: "Dec", total: 0 },
 ];
 
-const AdminDashboard = () => (
+const AdminDashboard = ({ allUsers, allCourses, recentUsers }: { allUsers: User[], allCourses: Course[], recentUsers: User[] }) => (
   <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
     <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:col-span-2">
       <Card>
@@ -66,8 +64,7 @@ const AdminDashboard = () => (
           <Users className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{users.length}</div>
-          <p className="text-xs text-muted-foreground">+5 since last month</p>
+          <div className="text-2xl font-bold">{allUsers.length}</div>
         </CardContent>
       </Card>
       <Card>
@@ -76,8 +73,7 @@ const AdminDashboard = () => (
           <BookOpen className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{courses.length}</div>
-          <p className="text-xs text-muted-foreground">+2 since last quarter</p>
+          <div className="text-2xl font-bold">{allCourses.length}</div>
         </CardContent>
       </Card>
       <Card className="col-span-1 md:col-span-2">
@@ -87,20 +83,8 @@ const AdminDashboard = () => (
         <CardContent className="pl-2">
           <ResponsiveContainer width="100%" height={350}>
             <BarChart data={chartData}>
-              <XAxis
-                dataKey="name"
-                stroke="#888888"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                stroke="#888888"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(value) => `${value}`}
-              />
+              <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
               <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -110,12 +94,10 @@ const AdminDashboard = () => (
     <Card className="lg:col-span-2 xl:col-span-1">
       <CardHeader>
         <CardTitle>Recent Users</CardTitle>
-        <CardDescription>
-          The latest users who have joined the platform.
-        </CardDescription>
+        <CardDescription>The latest users who have joined the platform.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-8">
-        {users.slice(0, 5).map(user => (
+        {recentUsers.map(user => (
           <div className="flex items-center gap-4" key={user.id}>
             <Avatar className="hidden h-9 w-9 sm:flex">
               <AvatarImage src={user.avatar} alt="Avatar" />
@@ -133,130 +115,150 @@ const AdminDashboard = () => (
   </div>
 );
 
-const TeacherDashboard = () => (
-    <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
-        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+const TeacherDashboard = ({ currentUser, allCourses }: { currentUser: User, allCourses: Course[] }) => {
+    const myCourses = allCourses.filter(c => c.teacherId === currentUser.id);
+    return (
+        <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardDescription>My Courses</CardDescription>
+                        <CardTitle className="text-4xl">{myCourses.length}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-xs text-muted-foreground">You are teaching {myCourses.length} active courses.</div>
+                    </CardContent>
+                </Card>
+            </div>
             <Card>
-                <CardHeader className="pb-2">
-                    <CardDescription>My Courses</CardDescription>
-                    <CardTitle className="text-4xl">2</CardTitle>
+                <CardHeader>
+                    <CardTitle>My Courses</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="text-xs text-muted-foreground">
-                        You are teaching 2 active courses.
-                    </div>
-                </CardContent>
-            </Card>
-             <Card>
-                <CardHeader className="pb-2">
-                    <CardDescription>My Students</CardDescription>
-                    <CardTitle className="text-4xl">3</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="text-xs text-muted-foreground">
-                        Across all your courses and groups.
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Course Title</TableHead>
+                                    <TableHead className="text-right">Enrolled Students</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {myCourses.map(course => (
+                                <TableRow key={course.id}>
+                                    <TableCell><div className="font-medium">{course.title}</div></TableCell>
+                                    <TableCell className="text-right">{course.studentIds.length}</TableCell>
+                                </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
                     </div>
                 </CardContent>
             </Card>
         </div>
-        <Card>
-            <CardHeader>
-                <CardTitle>My Courses</CardTitle>
-            </CardHeader>
-            <CardContent>
-                 <div className="overflow-x-auto">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Course Title</TableHead>
-                                <TableHead className="text-right">Enrolled Students</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {courses.filter(c => c.teacherId === getCurrentUser().id).map(course => (
-                            <TableRow key={course.id}>
-                                <TableCell>
-                                    <div className="font-medium">{course.title}</div>
-                                </TableCell>
-                                <TableCell className="text-right">{course.studentIds.length}</TableCell>
-                            </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                 </div>
-            </CardContent>
-        </Card>
-    </div>
-);
+    );
+}
 
-const StudentDashboard = () => (
-    <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
-        <div className="grid gap-4 sm:grid-cols-2">
+const StudentDashboard = ({ currentUser, allCourses }: { currentUser: User, allCourses: Course[] }) => {
+    const myCourses = allCourses.filter(c => c.studentIds.includes(currentUser.id));
+    return (
+        <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
+            <div className="grid gap-4 sm:grid-cols-2">
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardDescription>Enrolled Courses</CardDescription>
+                        <CardTitle className="text-4xl">{myCourses.length}</CardTitle>
+                    </CardHeader>
+                </Card>
+            </div>
             <Card>
-                <CardHeader className="pb-2">
-                    <CardDescription>Enrolled Courses</CardDescription>
-                    <CardTitle className="text-4xl">{courses.filter(c => c.studentIds.includes(getCurrentUser().id)).length}</CardTitle>
+                <CardHeader>
+                    <CardTitle>Continue Learning</CardTitle>
                 </CardHeader>
-            </Card>
-             <Card>
-                <CardHeader className="pb-2">
-                    <CardDescription>Completed Modules</CardDescription>
-                    <CardTitle className="text-4xl">5 / 8</CardTitle>
-                </CardHeader>
+                <CardContent>
+                    <div className="grid gap-4">
+                        {myCourses.map(course => (
+                            <Card key={course.id}>
+                                <CardHeader className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                    <div className="mb-2 sm:mb-0">
+                                        <CardTitle>{course.title}</CardTitle>
+                                        <CardDescription>{course.description}</CardDescription>
+                                    </div>
+                                    <Button asChild className="w-full sm:w-auto">
+                                        <Link href={`/dashboard/courses/${course.id}`}>Go to Course</Link>
+                                    </Button>
+                                </CardHeader>
+                            </Card>
+                        ))}
+                    </div>
+                </CardContent>
             </Card>
         </div>
-        <Card>
-            <CardHeader>
-                <CardTitle>Continue Learning</CardTitle>
-            </CardHeader>
-            <CardContent>
-                 <div className="grid gap-4">
-                    {courses.filter(c => c.studentIds.includes(getCurrentUser().id)).map(course => (
-                        <Card key={course.id}>
-                            <CardHeader className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-                                <div className="mb-2 sm:mb-0">
-                                    <CardTitle>{course.title}</CardTitle>
-                                    <CardDescription>{course.description}</CardDescription>
-                                </div>
-                                <Button asChild className="w-full sm:w-auto">
-                                    <Link href={`/dashboard/courses/${course.id}`}>Go to Course</Link>
-                                </Button>
-                            </CardHeader>
-                        </Card>
-                    ))}
-                 </div>
-            </CardContent>
-        </Card>
-    </div>
-);
-
-
-const dashboardViews = {
-  admin: <AdminDashboard />,
-  management: <AdminDashboard />, // Management has a similar view to admin
-  teacher: <TeacherDashboard />,
-  student: <StudentDashboard />,
-};
+    );
+}
 
 export default function Dashboard() {
-  const user = getCurrentUser();
-  const userInitials = user.name.split(' ').map(n => n[0]).join('');
+  const { user: authUser, isUserLoading: isAuthLoading } = useUser();
+  const firestore = useFirestore();
+
+  const userProfileRef = useMemoFirebase(() => authUser ? doc(firestore, "users", authUser.uid) : null, [firestore, authUser]);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<User>(userProfileRef);
+
+  const usersCollectionRef = useMemoFirebase(() => collection(firestore, "users"), [firestore]);
+  const { data: allUsers, isLoading: areUsersLoading } = useCollection<User>(usersCollectionRef);
+
+  const coursesCollectionRef = useMemoFirebase(() => collection(firestore, "courses"), [firestore]);
+  const { data: allCourses, isLoading: areCoursesLoading } = useCollection<Course>(coursesCollectionRef);
+  
+  const recentUsersQuery = useMemoFirebase(() => query(usersCollectionRef, orderBy("createdAt", "desc"), limit(5)), [usersCollectionRef]);
+  const { data: recentUsers, isLoading: areRecentUsersLoading } = useCollection<User>(recentUsersQuery);
+
+  const isLoading = isAuthLoading || isProfileLoading || areUsersLoading || areCoursesLoading || areRecentUsersLoading;
+
+  if (isLoading) {
+    return (
+        <div className="flex min-h-screen w-full flex-col">
+            <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+                <Skeleton className="h-16 w-1/2" />
+                <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
+                    <Skeleton className="h-32" />
+                    <Skeleton className="h-32" />
+                    <Skeleton className="h-96 lg:col-span-2" />
+                    <Skeleton className="h-96 xl:col-span-1" />
+                </div>
+            </main>
+        </div>
+    );
+  }
+
+  if (!userProfile) {
+    return <p>Could not load user profile. Please try again.</p>;
+  }
+
+  const userInitials = userProfile.name.split(' ').map(n => n[0]).join('');
+
+  const dashboardViews: { [key: string]: React.ReactNode } = {
+    admin: <AdminDashboard allUsers={allUsers || []} allCourses={allCourses || []} recentUsers={recentUsers || []} />,
+    management: <AdminDashboard allUsers={allUsers || []} allCourses={allCourses || []} recentUsers={recentUsers || []} />,
+    teacher: <TeacherDashboard currentUser={userProfile} allCourses={allCourses || []} />,
+    student: <StudentDashboard currentUser={userProfile} allCourses={allCourses || []} />,
+  };
 
   return (
     <div className="flex min-h-screen w-full flex-col">
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex items-center gap-4">
             <Avatar className="h-12 w-12 sm:h-16 sm:w-16">
-              <AvatarImage src={user.avatar} alt={user.name} />
+              <AvatarImage src={userProfile.avatar} alt={userProfile.name} />
               <AvatarFallback className="text-xl sm:text-2xl">{userInitials}</AvatarFallback>
             </Avatar>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold font-headline">Welcome back, {user.name.split(' ')[0]}!</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold font-headline">Welcome back, {userProfile.name.split(' ')[0]}!</h1>
               <p className="text-sm sm:text-base text-muted-foreground">Here's what's happening today.</p>
             </div>
         </div>
         
-        {dashboardViews[user.role] || <p>No dashboard view available for your role.</p>}
+        {dashboardViews[userProfile.role] || <p>No dashboard view available for your role.</p>}
         
       </main>
     </div>
