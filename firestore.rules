@@ -79,6 +79,8 @@ service cloud.firestore {
 
     match /registrations/{registrationId} {
       allow create: if isSignedIn();
+      allow list: if isAdmin();
+      allow get: if isAdmin();
     }
 
     /**
