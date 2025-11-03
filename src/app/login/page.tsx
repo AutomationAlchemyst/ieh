@@ -95,7 +95,7 @@ export default function LoginPage() {
                       placeholder="m@example.com"
                       required
                       className="pl-9"
-                      defaultValue="admin@ihsan.edu"
+                      
                     />
                   </div>
                 </div>
@@ -118,7 +118,7 @@ export default function LoginPage() {
                       required
                       className="pl-9"
                       placeholder="••••••••"
-                      defaultValue="password"
+                      
                     />
                   </div>
                 </div>
