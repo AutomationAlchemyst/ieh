@@ -5,8 +5,8 @@ import { useMemo } from "react";
 import { collection } from "firebase/firestore";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { DataTable } from "../users/data-table";
+import { PlusCircle, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -18,12 +18,19 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Skeleton } from "@/components/ui/skeleton";
 import { BeneficiaryRegistrationForm } from "./beneficiary-registration-form";
 import { columns, Registration } from "./registration-columns";
+import { exportToCsv } from "@/lib/utils";
 
 export default function RegistrationsPage() {
   const firestore = useFirestore();
   const registrationsCollection = useMemoFirebase(() => collection(firestore, "registrations"), [firestore]);
   
   const { data: registrations, isLoading } = useCollection<Registration>(registrationsCollection);
+
+  const handleExport = () => {
+    if (registrations) {
+      exportToCsv(registrations, "registrations-export.csv");
+    }
+  };
   
   return (
     <div className="flex flex-col gap-8">
@@ -34,23 +41,29 @@ export default function RegistrationsPage() {
             View and manage all submitted registrations.
           </p>
         </div>
-        <Dialog>
-            <DialogTrigger asChild>
-                <Button className="w-full sm:w-auto">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Registration
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-4xl">
-                <DialogHeader>
-                    <DialogTitle>New Beneficiary Registration</DialogTitle>
-                    <DialogDescription>
-                        Fill in the details below to submit a new registration.
-                    </DialogDescription>
-                </DialogHeader>
-                <BeneficiaryRegistrationForm />
-            </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Button className="w-full sm:w-auto" onClick={handleExport} disabled={!registrations || registrations.length === 0}>
+            <Download className="mr-2 h-4 w-4" />
+            Export to CSV
+          </Button>
+          <Dialog>
+              <DialogTrigger asChild>
+                  <Button className="w-full sm:w-auto">
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add Registration
+                  </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-4xl">
+                  <DialogHeader>
+                      <DialogTitle>New Beneficiary Registration</DialogTitle>
+                      <DialogDescription>
+                          Fill in the details below to submit a new registration.
+                      </DialogDescription>
+                  </DialogHeader>
+                  <BeneficiaryRegistrationForm />
+              </DialogContent>
+          </Dialog>
+        </div>
       </div>
       <Card>
         <CardHeader>
