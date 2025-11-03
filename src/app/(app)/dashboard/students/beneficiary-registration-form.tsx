@@ -116,7 +116,7 @@ export function BeneficiaryRegistrationForm() {
     if (values.registeringApplicant4 && values.applicant4) additionalApplicants.push(values.applicant4);
     if (values.registeringApplicant5 && values.applicant5) additionalApplicants.push(values.applicant5);
 
-    const newRegistration = {
+        const newRegistration: any = {
       // Main Applicant Info
       name: values.name,
       email: values.email,
@@ -125,8 +125,6 @@ export function BeneficiaryRegistrationForm() {
       
       // Hosting Info
       wantsToHost: values.wantsToHost,
-      paymentMethod: values.wantsToHost === 'Yes' ? values.paymentMethod : undefined,
-      paymentDetails: values.wantsToHost === 'Yes' ? values.paymentDetails : undefined,
 
       // Main Applicant Preferences
       ageGroup: values.ageGroup,
@@ -146,6 +144,11 @@ export function BeneficiaryRegistrationForm() {
       createdAt: serverTimestamp(),
       status: "New" as const,
     };
+
+    if (newRegistration.wantsToHost === 'Yes') {
+      newRegistration.paymentMethod = values.paymentMethod;
+      newRegistration.paymentDetails = values.paymentDetails;
+    }
 
     addDocumentNonBlocking(registrationsCollection, newRegistration);
 
