@@ -3,7 +3,7 @@
 
 import { useMemo } from "react";
 import { collection, query, where } from "firebase/firestore";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import type { User } from "@/lib/data";
 
 import { DataTable } from "../users/data-table";
@@ -26,7 +26,13 @@ export default function AsatizahPage() {
   const usersCollection = useMemoFirebase(() => collection(firestore, "users"), [firestore]);
   const asatizahQuery = useMemoFirebase(() => query(usersCollection, where("role", "==", "teacher")), [usersCollection]);
   
-  const { data: asatizah, isLoading } = useCollection<User>(asatizahQuery);
+    const { user, isUserLoading: isAuthLoading } = useUser();
+  const { data: asatizah, isLoading: isDataLoading } = useCollection<User>(
+    asatizahQuery,
+    { skip: !user } // Skip query if user is not authenticated
+  );
+
+  const isLoading = isAuthLoading || isDataLoading;
   
   return (
     <div className="flex flex-col gap-8">
