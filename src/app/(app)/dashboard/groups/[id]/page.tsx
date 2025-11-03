@@ -1,3 +1,5 @@
+"use client";
+
 import { notFound, useParams } from "next/navigation";
 import {
   getGroupById,
