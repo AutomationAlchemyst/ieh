@@ -16,14 +16,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/icons";
-import { useAuth, initiateEmailSignIn } from "@/firebase";
+import { useAuth } from "@/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { toast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
   const router = useRouter();
   const auth = useAuth();
 
-  const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const email = formData.get("email") as string;
@@ -38,9 +39,17 @@ export default function LoginPage() {
         return;
     }
     
-    // For this demo, we'll sign in with the provided email and password.
-    initiateEmailSignIn(auth, email, password);
-    router.push("/dashboard");
+    try {
+      // For this demo, we'll sign in with the provided email and password.
+      await signInWithEmailAndPassword(auth, email, password);
+      router.push("/dashboard");
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: "Invalid email or password. Please try again.",
+      });
+    }
   };
 
   return (
