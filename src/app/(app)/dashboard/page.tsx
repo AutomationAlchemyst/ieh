@@ -2,13 +2,32 @@
 
 import { collection, query, orderBy, limit } from "firebase/firestore";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-
 import type { User, Course } from "@/lib/data";
 import { Skeleton } from "@/components/ui/skeleton";
-
-
-
-
+import {
+  BookOpen,
+  Users,
+} from "lucide-react";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Bar,
   BarChart,
@@ -32,7 +51,7 @@ const chartData = [
   { name: "Dec", total: 0 },
 ];
 
-const AdminDashboard = ({ allUsers, allCourses, recentUsers, teachers, students }: { allUsers: User[], allCourses: Course[], recentUsers: User[], teachers: User[], students: any[] }) => (
+const AdminDashboard = ({ allUsers, allCourses, teachers, students }: { allUsers: User[], allCourses: Course[], teachers: User[], students: any[] }) => (
   <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
     <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:col-span-2">
       <Card>
@@ -46,7 +65,7 @@ const AdminDashboard = ({ allUsers, allCourses, recentUsers, teachers, students 
       </Card>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Students</CardTitle>
+          <CardTitle className="text-sm font-medium">Total Students</CardTItle>
           <BookOpen className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
@@ -68,27 +87,7 @@ const AdminDashboard = ({ allUsers, allCourses, recentUsers, teachers, students 
         </CardContent>
       </Card>
     </div>
-    <Card className="lg:col-span-2 xl:col-span-1">
-      <CardHeader>
-        <CardTitle>Recent Users</CardTitle>
-        <CardDescription>The latest users who have joined the platform.</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-8">
-        {recentUsers.map(user => (
-          <div className="flex items-center gap-4" key={user.id}>
-            <Avatar className="hidden h-9 w-9 sm:flex">
-              <AvatarImage src={user.avatar} alt="Avatar" />
-              <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <div className="grid gap-1">
-              <p className="text-sm font-medium leading-none">{user.name}</p>
-              <p className="text-sm text-muted-foreground">{user.email}</p>
-            </div>
-            <div className="ml-auto font-medium capitalize">{user.role}</div>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
+    
   </div>
 );
 
@@ -106,10 +105,7 @@ export default function Dashboard() {
   const registrationsCollectionRef = useMemoFirebase(() => collection(firestore, "registrations"), [firestore]);
   const { data: allRegistrations, isLoading: areRegistrationsLoading } = useCollection<any>(registrationsCollectionRef);
   
-  const recentUsersQuery = useMemoFirebase(() => query(usersCollectionRef, orderBy("createdAt", "desc"), limit(5)), [usersCollectionRef]);
-  const { data: recentUsers, isLoading: areRecentUsersLoading } = useCollection<User>(recentUsersQuery);
-
-  const isLoading = areUsersLoading || areCoursesLoading || areRecentUsersLoading || areRegistrationsLoading;
+  const isLoading = areUsersLoading || areCoursesLoading || areRegistrationsLoading;
 
   if (isLoading) {
     return (
@@ -140,7 +136,7 @@ export default function Dashboard() {
             </div>
         </div>
         
-        <AdminDashboard allUsers={allUsers || []} allCourses={allCourses || []} recentUsers={recentUsers || []} teachers={teachers} students={students} />
+        <AdminDashboard allUsers={allUsers || []} allCourses={allCourses || []} teachers={teachers} students={students} />
         
       </main>
     </div>
