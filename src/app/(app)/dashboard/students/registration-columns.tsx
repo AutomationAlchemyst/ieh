@@ -5,13 +5,20 @@ import { format } from 'date-fns';
 
 // This is a new data type representing a document from the 'registrations' collection
 // It will be different from the old 'User' type.
+export type Applicant = {
+  name: string;
+  ageGroup: string;
+  preferredSubject: string;
+};
+
 export type Registration = {
   id: string;
   name: string;
   contactNo?: string;
   wantsToHost: 'Yes' | 'No';
   createdAt: { seconds: number; nanoseconds: number; };
-  additionalApplicants?: any[];
+  additionalApplicants?: Applicant[];
+  status: string;
 }
 
 export const columns: ColumnDef<Registration>[] = [
@@ -31,9 +38,24 @@ export const columns: ColumnDef<Registration>[] = [
     accessorKey: "additionalApplicants",
     header: "Additional Applicants",
     cell: ({ row }) => {
-      const count = row.original.additionalApplicants?.length || 0;
-      return <span>{count}</span>
+      const additionalApplicants = row.original.additionalApplicants;
+      if (!additionalApplicants || additionalApplicants.length === 0) {
+        return <span>0</span>;
+      }
+      return (
+        <ul className="list-disc list-inside">
+          {additionalApplicants.map((applicant, index) => (
+            <li key={index}>
+              <strong>{applicant.name}</strong> ({applicant.ageGroup}) - {applicant.preferredSubject}
+            </li>
+          ))}
+        </ul>
+      );
     }
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
   },
   {
     accessorKey: "createdAt",
