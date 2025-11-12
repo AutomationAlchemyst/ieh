@@ -1,5 +1,6 @@
 "use client";
 
+import { collection, query, orderBy, limit } from "firebase/firestore";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 
 import type { User, Course } from "@/lib/data";
