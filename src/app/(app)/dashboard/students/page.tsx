@@ -26,9 +26,34 @@ export default function RegistrationsPage() {
   
   const { data: registrations, isLoading } = useCollection<Registration>(registrationsCollection);
 
+  const processedData = useMemo(() => {
+    if (!registrations) return [];
+    const allApplicants: any[] = [];
+    registrations.forEach(reg => {
+      // Add the main applicant
+      allApplicants.push({
+        ...reg,
+        note: '' // Main applicants have no note
+      });
+      // Add any additional applicants
+      if (reg.additionalApplicants) {
+        reg.additionalApplicants.forEach(applicant => {
+          allApplicants.push({
+            ...reg, // Copy main registration details
+            name: applicant.name, // Overwrite with additional applicant's name
+            ageGroup: applicant.ageGroup,
+            preferredSubject: applicant.preferredSubject,
+            note: `Additional Applicant from ${reg.name}` // Add a note
+          });
+        });
+      }
+    });
+    return allApplicants;
+  }, [registrations]);
+
   const handleExport = () => {
-    if (registrations) {
-      exportToCsv(registrations, "registrations-export.csv");
+    if (processedData) {
+      exportToCsv(processedData, "registrations-export.csv");
     }
   };
   
@@ -42,7 +67,7 @@ export default function RegistrationsPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button className="w-full sm:w-auto" onClick={handleExport} disabled={!registrations || registrations.length === 0}>
+          <Button className="w-full sm:w-auto" onClick={handleExport} disabled={!processedData || processedData.length === 0}>
             <Download className="mr-2 h-4 w-4" />
             Export to CSV
           </Button>
@@ -73,12 +98,12 @@ export default function RegistrationsPage() {
         <CardContent>
           {isLoading ? (
             <div className="space-y-4">
-              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-.full" />
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />
             </div>
           ) : (
-            <DataTable columns={columns} data={registrations || []} />
+            <DataTable columns={columns} data={processedData || []} />
           )}
         </CardContent>
       </Card>
