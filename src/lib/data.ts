@@ -54,6 +54,43 @@ export interface Group {
 
 export const users: User[] = [
   { id: "1", name: "Admin User", email: "admin@ihsan.edu", role: "admin", avatar: "https://picsum.photos/seed/avatar1/100/100", createdAt: "2023-01-15", status: "Active" },
+  { 
+    id: "3", 
+    name: "Ustadh Ahmad", 
+    email: "ahmad@ihsan.edu", 
+    role: "teacher", 
+    avatar: "https://picsum.photos/seed/avatar3/100/100", 
+    createdAt: "2023-02-10", 
+    status: "Active",
+    preferredLocations: ["East", "Central"],
+    availableDays: ["Weekends", "Evenings"]
+  },
+  { 
+    id: "6", 
+    name: "Ustadha Fatima", 
+    email: "fatima@ihsan.edu", 
+    role: "teacher", 
+    avatar: "https://picsum.photos/seed/avatar6/100/100", 
+    createdAt: "2023-03-05", 
+    status: "Active",
+    preferredLocations: ["West", "North"],
+    availableDays: ["Weekdays", "Evenings"]
+  },
+  { 
+    id: "8", 
+    name: "Ustadh Bilal", 
+    email: "bilal@ihsan.edu", 
+    role: "teacher", 
+    avatar: "https://picsum.photos/seed/avatar8/100/100", 
+    createdAt: "2023-04-12", 
+    status: "Active",
+    preferredLocations: ["Central", "South"],
+    availableDays: ["Weekends"]
+  },
+  { id: "4", name: "Student Ali", email: "ali@student.edu", role: "student", avatar: "https://picsum.photos/seed/avatar4/100/100", createdAt: "2023-05-20", status: "Active" },
+  { id: "5", name: "Student Sarah", email: "sarah@student.edu", role: "student", avatar: "https://picsum.photos/seed/avatar5/100/100", createdAt: "2023-06-15", status: "Active" },
+  { id: "7", name: "Student Omar", email: "omar@student.edu", role: "student", avatar: "https://picsum.photos/seed/avatar7/100/100", createdAt: "2023-07-01", status: "Active" },
+  { id: "9", name: "Student Aisha", email: "aisha@student.edu", role: "student", avatar: "https://picsum.photos/seed/avatar9/100/100", createdAt: "2023-08-10", status: "Active" },
 ];
 
 export const courses: Course[] = [
