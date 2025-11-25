@@ -1,198 +1,94 @@
-/**
- * @fileoverview Firestore Security Rules for Ihsan Education Hub Portal.
- *
- * Core Philosophy:
- * This ruleset enforces a hybrid security model combining user-based access control (for user profiles and Ulumi groups) and role-based access control (for courses and admin privileges).  It prioritizes authorization independence by denormalizing authorization data directly into documents and subcollections.  It uses structural segregation to optimize query performance and guarantee QAPs (queries are not filters).
- *
- * Data Structure:
- * - /users/{userId}: User profiles, accessible only to the user themselves.
- * - /courses/{courseId}: Course information, publicly readable but write-protected (admin-only).
- * - /courses/{courseId}/modules/{moduleId}: Modules within a course, inheriting access control from the parent course.
- * - /ulumi_groups/{ulumiGroupId}: Ulumi group information, write-protected with `asatizahId`.
- * - /users/{userId}/ulumiGroups/{ulumiGroupId}: Student's Ulumi group memberships with denormalized members map.
- * - /enrollments/{enrollmentId}: Enrollment records, restricted access for students and admins.
- * - /roles_admin/{userId}: Existence-based admin role assignments.
- *
- * Key Security Decisions:
- * - User listing is disabled to protect privacy.
- * - Admin privileges are granted based on the existence of a document in the `/roles_admin/{userId}` collection.
- * - The default security posture is strict: all access must be explicitly allowed.
- *
- * Denormalization for Authorization:
- * - Ulumi group memberships are denormalized into the `/users/{userId}/ulumiGroups/{ulumiGroupId}` collection with a `members` map, enabling efficient security rules without `get()` calls.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Checks if the current user is signed in.
-     * @return {boolean} True if the user is signed in, false otherwise.
-     */
+    // --- Helper Functions ---
+
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * @description Checks if the current user is the owner of the document.
-     * @param {string} userId The user ID to compare against the request's authentication UID.
-     * @return {boolean} True if the user is the owner, false otherwise.
-     */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /**
-     * @description Checks if the current user is the existing owner of the document.
-     * @param {string} userId The user ID to compare against the request's authentication UID and the resource data.
-     * @return {boolean} True if the user is the owner and the resource exists, false otherwise.
-     */
     function isExistingOwner(userId) {
         return isOwner(userId) && resource != null;
     }
 
-    /**
-     * @description Checks if the current user is an admin.
-     * @return {boolean} True if the user is an admin, false otherwise.
-     */
+    // Admin check: Document existence OR Specific Developer Emails
     function isAdmin() {
-      return exists(/databases/(default)/documents/roles_admin/$(request.auth.uid));
+      return exists(/databases/(default)/documents/roles_admin/$(request.auth.uid)) ||
+             (request.auth.token.email in ['ath@mtfa.org', 'atika@mtfa.org', 'nasrullah@mtfa.org']);
     }
 
-    /**
-     * @description Rules for user profiles.
-     * @path /users/{userId}
-     * @allow (get) User 'ThSLODZm3veN2PyrDp6kvGUw91h2' can get their own profile.
-     * @allow (create) User 'ThSLODZm3veN2PyrDp6kvGUw91h2' can create their own profile.
-     * @allow (update) User 'ThSLODZm3veN2PyrDp6kvGUw91h2' can update their own profile.
-     * @allow (delete) User 'ThSLODZm3veN2PyrDp6kvGUw91h2' can delete their own profile.
-     * @deny (get) User 'someOtherUserId' cannot get user 'ThSLODZm3veN2PyrDp6kvGUw91h2' profile.
-     * @principle Enforces document ownership for writes, restricts access to a user's own data tree.
-     */
+    // --- Collection Rules ---
+
+    // Users
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if isAdmin();
-      allow create: if (isOwner(userId) && request.resource.data.id == userId) || isAdmin();
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(userId);
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin() || isSignedIn(); // Opened up list for teachers/matching logic (filtering happens client side often)
+      allow create: if isSignedIn(); // Allow anyone to register
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isExistingOwner(userId) || isAdmin();
     }
 
+    // Registrations (Student Verification Queue)
     match /registrations/{registrationId} {
       allow create: if isSignedIn();
-      allow list: if isAdmin();
-      allow get: if isAdmin();
+      allow read, update, delete: if isAdmin();
     }
 
-    /**
-     * @description Rules for courses.
-     * @path /courses/{courseId}
-     * @allow (get) Any signed-in user can read course information.
-     * @allow (list) Any signed-in user can list course information.
-     * @allow (create) Only admins can create courses.
-     * @allow (update) Only admins can update courses.
-     * @allow (delete) Only admins can delete courses.
-     * @deny (create) Non-admin user cannot create courses.
-     * @principle Allows public read access with admin-only writes.
-     */
+    // Courses
     match /courses/{courseId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
-      allow delete: if isAdmin() && resource != null;
+      allow read: if isSignedIn();
+      allow write: if isAdmin(); // Only admins create/edit courses
     }
 
-    /**
-     * @description Rules for modules within courses.
-     * @path /courses/{courseId}/modules/{moduleId}
-     * @allow (get) Any signed-in user can read module information within a course.
-     * @allow (list) Any signed-in user can list module information within a course.
-     * @allow (create) Only admins can create modules within a course.
-     * @allow (update) Only admins can update modules within a course.
-     * @allow (delete) Only admins can delete modules within a course.
-     * @deny (create) Non-admin user cannot create modules within a course.
-     * @principle Inherits authorization from the parent course, with additional restrictions on creation/modification.
-     */
-    match /courses/{courseId}/modules/{moduleId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
-      allow delete: if isAdmin() && resource != null;
+    // Bursaries (Financial Aid)
+    match /bursaries/{bursaryId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.submittedBy == request.auth.uid);
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
     }
 
-    /**
-     * @description Rules for Ulumi groups.
-     * @path /ulumi_groups/{ulumiGroupId}
-     * @allow (get) Any signed-in user can read Ulumi group information.
-     * @allow (list) Any signed-in user can list Ulumi group information.
-     * @allow (create) Only asatizah can create ulumi groups.
-     * @allow (update) Only asatizah can update ulumi groups.
-     * @allow (delete) Only asatizah can delete ulumi groups.
-     * @deny (create) Non-asatizah cannot create Ulumi groups.
-     * @principle Access control is managed via the `asatizahId` field.
-     */
-    match /ulumi_groups/{ulumiGroupId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.asatizahId == request.auth.uid;
-      allow update: if isSignedIn() && request.resource.data.asatizahId == resource.data.asatizahId && resource != null;
-      allow delete: if isSignedIn() && request.resource.data.asatizahId == resource.data.asatizahId && resource != null;
+    // Payments (Disbursements)
+    match /payments/{paymentId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.recipientId == request.auth.uid);
+      allow create: if isAdmin() || isSignedIn(); // Allow automated triggers (e.g., from attendance)
+      allow update: if isAdmin();
     }
 
-    /**
-     * @description Rules for Ulumi groups specific to students.
-     * @path /users/{userId}/ulumiGroups/{ulumiGroupId}
-     * @allow (get) Users can access their Ulumi group details if they are a member.
-     * @allow (list) Users can list their own Ulumi groups.
-     * @allow (create) Users can create Ulumi groups if they are a member.
-     * @allow (update) Only members can update.
-     * @allow (delete) Only members can delete.
-     * @deny (get) Users cannot access Ulumi group details if they are not a member.
-     * @principle Stores Ulumi groups specific to students. Includes denormalized 'members' field to determine access to Ulumi group details.
-     */
-    match /users/{userId}/ulumiGroups/{ulumiGroupId} {
-      allow get: if resource.data.members[request.auth.uid] != null;
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.members[request.auth.uid] != null;
-      allow update: if resource != null && resource.data.members[request.auth.uid] != null;
-      allow delete: if resource != null && resource.data.members[request.auth.uid] != null;
+    // Attendance Logs
+    match /attendance_logs/{logId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.teacherId == request.auth.uid);
+      allow create: if isSignedIn(); // Teachers submit logs
+      allow update: if isAdmin();
     }
 
-    /**
-     * @description Rules for enrollments.
-     * @path /enrollments/{enrollmentId}
-     * @allow (get) Students and Admins can read enrollment details.
-     * @allow (list) Students and Admins can list enrollment details.
-     * @deny (create) Enrollment cannot be created by everyone
-     * @deny (update) Enrollment cannot be updated by everyone
-     * @deny (delete) Enrollment cannot be deleted by everyone
-     * @principle Student and Admin roles are checked for enrollment access.
-     */
-    match /enrollments/{enrollmentId} {
-      allow get: if isSignedIn() && (resource.data.studentId == request.auth.uid || isAdmin());
-      allow list: if isSignedIn() && (resource.data.studentId == request.auth.uid || isAdmin());
-      allow create: if false;
-      allow update: if false && resource != null;
-      allow delete: if false && resource != null;
+    // Matches (AI Engine)
+    match /matches/{matchId} {
+      allow read, write: if isAdmin(); // Admin manages the matching engine
     }
 
-        /**
-         * @description Rules for checking admin privileges based on document existence.
-         * @path /roles_admin/{userId}
-         * @allow (get) Only the user themselves or an admin can get their admin role.
-         * @deny (list) Listing admin roles is not permitted.
-         * @allow (create) Only the user themselves can set their admin role.
-         * @deny (update) Updating admin roles is not permitted.
-         * @deny (delete) Deleting admin roles is not permitted.
-         * @principle Existence-based access control.
-         */
+    // Ulumi Groups
+    match /ulumi_groups/{groupId} {
+      allow read: if isSignedIn(); // Visible to teachers/students
+      allow create, update, delete: if isAdmin() || (isSignedIn() && request.resource.data.asatizahId == request.auth.uid);
+    }
+
+    // Settings & Notifications
+    match /settings/{settingId} {
+      allow read, write: if isAdmin();
+    }
+    match /notification_templates/{templateId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Admin Roles (Access Control)
     match /roles_admin/{userId} {
-      allow get: if isOwner(userId) || isAdmin();
-      allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if false;
-      allow delete: if false;
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isAdmin();
     }
   }
 }
