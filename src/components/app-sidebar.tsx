@@ -82,7 +82,12 @@ export default function AppSidebar() {
 
   const { data: userProfile } = useDoc<any>(userDocRef);
 
-  const userRole: UserRole = userProfile?.role || "student"; // Default to student if unknown
+  // Developer Override: Force admin role for specific emails
+  const adminEmails = ['ath@mtfa.org', 'atika@mtfa.org', 'nasrullah@mtfa.org'];
+  const isDevAdmin = firebaseUser?.email && adminEmails.includes(firebaseUser.email);
+  
+  const userRole: UserRole = isDevAdmin ? "admin" : (userProfile?.role || "student");
+  
   const currentNav = navItems[userRole] || [];
 
   if (!firebaseUser) return null; // Or return a skeleton sidebar
