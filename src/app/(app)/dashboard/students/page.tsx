@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useMemo } from "react";
-import { collection } from "firebase/firestore";
+import { useMemo, useState } from "react";
+import { collection, query, orderBy } from "firebase/firestore";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { DataTable } from "../users/data-table";
 import { PlusCircle, Download } from "lucide-react";
@@ -16,44 +16,75 @@ import {
 } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BeneficiaryRegistrationForm } from "./beneficiary-registration-form";
-import { columns, Registration } from "./registration-columns";
+import { columns, ApplicantRow } from "./registration-columns"; // Import ApplicantRow correctly
 import { exportToCsv } from "@/lib/utils";
+
+// Define Registration type matching Firestore data
+type Registration = {
+  id: string;
+  name: string;
+  additionalApplicants?: any[];
+  status?: string;
+  wantsToHost?: 'Yes' | 'No';
+  createdAt?: any;
+  [key: string]: any;
+};
 
 export default function RegistrationsPage() {
   const firestore = useFirestore();
-  const registrationsCollection = useMemoFirebase(() => collection(firestore, "registrations"), [firestore]);
+  const [filterStatus, setFilterStatus] = useState<string>("New"); // Default to 'New' for Verification Queue
+  
+  // Order by createdAt desc to show newest first
+  const registrationsCollection = useMemoFirebase(
+    () => query(collection(firestore, "registrations"), orderBy("createdAt", "desc")), 
+    [firestore]
+  );
   
   const { data: registrations, isLoading } = useCollection<Registration>(registrationsCollection);
 
   const processedData = useMemo(() => {
     if (!registrations) return [];
-    const allApplicants: any[] = [];
+    const allApplicants: ApplicantRow[] = [];
+    
     registrations.forEach(reg => {
       // Add the main applicant
       allApplicants.push({
         ...reg,
-        note: '' // Main applicants have no note
-      });
+        status: reg.status || "New", // Default to New if undefined
+        note: '', // Main applicants have no note
+        wantsToHost: reg.wantsToHost || 'No',
+        createdAt: reg.createdAt,
+      } as ApplicantRow);
+      
       // Add any additional applicants
       if (reg.additionalApplicants) {
-        reg.additionalApplicants.forEach(applicant => {
+        reg.additionalApplicants.forEach((applicant: any) => {
           allApplicants.push({
-            ...reg, // Copy main registration details
+            ...reg, // Copy main registration details (id, status, etc.)
             name: applicant.name, // Overwrite with additional applicant's name
             ageGroup: applicant.ageGroup,
             preferredSubject: applicant.preferredSubject,
-            note: `Additional Applicant from ${reg.name}` // Add a note
-          });
+            note: `Additional Applicant from ${reg.name}`, // Add a note
+            wantsToHost: reg.wantsToHost || 'No',
+            createdAt: reg.createdAt,
+            status: reg.status || "New",
+          } as ApplicantRow);
         });
       }
     });
     return allApplicants;
   }, [registrations]);
 
+  const filteredData = useMemo(() => {
+    if (filterStatus === "All") return processedData;
+    return processedData.filter(item => item.status === filterStatus);
+  }, [processedData, filterStatus]);
+
   const handleExport = () => {
-    if (processedData) {
-      exportToCsv(processedData, "registrations-export.csv");
+    if (filteredData) {
+      exportToCsv(filteredData, `registrations-${filterStatus}.csv`);
     }
   };
   
@@ -61,15 +92,15 @@ export default function RegistrationsPage() {
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold font-headline md:text-4xl">Beneficiary Registrations</h1>
+          <h1 className="text-3xl font-bold font-headline md:text-4xl">User Management</h1>
           <p className="text-muted-foreground">
-            View and manage all submitted registrations.
+            Manage student registrations and verification queue.
           </p>
         </div>
         <div className="flex gap-2">
-          <Button className="w-full sm:w-auto" onClick={handleExport} disabled={!processedData || processedData.length === 0}>
+          <Button className="w-full sm:w-auto" onClick={handleExport} disabled={!filteredData || filteredData.length === 0}>
             <Download className="mr-2 h-4 w-4" />
-            Export to CSV
+            Export CSV
           </Button>
           <Dialog>
               <DialogTrigger asChild>
@@ -90,23 +121,37 @@ export default function RegistrationsPage() {
           </Dialog>
         </div>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>All Registrations</CardTitle>
-          <CardDescription>A list of all submitted registrations.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-4">
-              <Skeleton className="h-12 w-.full" />
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-            </div>
-          ) : (
-            <DataTable columns={columns} data={processedData || []} />
-          )}
-        </CardContent>
-      </Card>
+      
+      <Tabs defaultValue="New" onValueChange={setFilterStatus} className="w-full">
+        <TabsList>
+          <TabsTrigger value="New">Verification Queue (New)</TabsTrigger>
+          <TabsTrigger value="Verified">Verified Students</TabsTrigger>
+          <TabsTrigger value="Rejected">Rejected</TabsTrigger>
+          <TabsTrigger value="All">All Registrations</TabsTrigger>
+        </TabsList>
+        
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle>{filterStatus === 'All' ? 'All Registrations' : `${filterStatus} Registrations`}</CardTitle>
+            <CardDescription>
+              {filterStatus === 'New' 
+                ? "Review and verify new student applications." 
+                : `Viewing ${filterStatus.toLowerCase()} registrations.`}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-4">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            ) : (
+              <DataTable columns={columns} data={filteredData || []} />
+            )}
+          </CardContent>
+        </Card>
+      </Tabs>
     </div>
   );
 }

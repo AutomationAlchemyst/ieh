@@ -2,7 +2,7 @@
 
 import { ColumnDef } from "@tanstack/react-table"
 import { format } from 'date-fns';
-import { MoreHorizontal, CheckCircle, XCircle } from "lucide-react";
+import { MoreHorizontal, CheckCircle, XCircle, CreditCard } from "lucide-react";
 import { doc, updateDoc } from "firebase/firestore";
 import { useFirestore } from "@/firebase";
 import { Button } from "@/components/ui/button";
@@ -17,46 +17,44 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 
-// This type represents a single row in our applicants table, which can be either a main applicant or an additional one.
-export type ApplicantRow = {
+export type BursaryApplication = {
   id: string;
-  name: string;
-  contactNo?: string;
-  wantsToHost: 'Yes' | 'No';
-  createdAt: { seconds: number; nanoseconds: number; };
-  status: string;
-  note?: string; // To indicate if it's an additional applicant
+  applicantName: string;
+  applicantId: string;
+  submissionDate: { seconds: number; nanoseconds: number; };
+  status: "Pending" | "Verified" | "Approved" | "Rejected";
+  details: {
+    householdIncome: number;
+    dependents: number;
+    reason: string;
+  };
 }
 
-const ActionsCell = ({ row }: { row: ApplicantRow }) => {
+const ActionsCell = ({ row }: { row: BursaryApplication }) => {
   const firestore = useFirestore();
 
-  const handleStatusUpdate = async (newStatus: "Verified" | "Rejected") => {
+  const handleStatusUpdate = async (newStatus: BursaryApplication['status']) => {
     if (!firestore) return;
 
     try {
-      const docRef = doc(firestore, "registrations", row.id);
+      const docRef = doc(firestore, "bursaries", row.id);
       await updateDoc(docRef, {
         status: newStatus
       });
       toast({
         title: "Status Updated",
-        description: `Registration for ${row.name} has been marked as ${newStatus}.`,
+        description: `Application for ${row.applicantName} has been marked as ${newStatus}.`,
       });
     } catch (error) {
       console.error("Error updating status:", error);
       toast({
         variant: "destructive",
         title: "Update Failed",
-        description: "There was a problem updating the registration status.",
+        description: "There was a problem updating the application status.",
       });
     }
   };
 
-  // Only allow actions on the main applicant row to avoid confusion, 
-  // or clarify that it affects the whole application.
-  // Since 'status' is on the main document, changing it affects all applicants in that submission.
-  
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -74,8 +72,12 @@ const ActionsCell = ({ row }: { row: ApplicantRow }) => {
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => handleStatusUpdate("Verified")}>
+          <CheckCircle className="mr-2 h-4 w-4 text-blue-500" />
+          Mark as Verified
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleStatusUpdate("Approved")}>
           <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
-          Approve (Verify)
+          Approve
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => handleStatusUpdate("Rejected")}>
           <XCircle className="mr-2 h-4 w-4 text-red-500" />
@@ -86,22 +88,18 @@ const ActionsCell = ({ row }: { row: ApplicantRow }) => {
   );
 };
 
-export const columns: ColumnDef<ApplicantRow>[] = [
+export const columns: ColumnDef<BursaryApplication>[] = [
   {
-    accessorKey: "name",
+    accessorKey: "applicantName",
     header: "Applicant",
   },
   {
-    accessorKey: "contactNo",
-    header: "Contact No.",
-  },
-  {
-    accessorKey: "wantsToHost",
-    header: "Hosting?",
-  },
-  {
-    accessorKey: "note",
-    header: "Note",
+    accessorKey: "details.householdIncome",
+    header: "Income ($)",
+    cell: ({ row }) => {
+        const amount = parseFloat(row.original.details?.householdIncome as any) || 0;
+        return new Intl.NumberFormat('en-SG', { style: 'currency', currency: 'SGD' }).format(amount);
+    }
   },
   {
     accessorKey: "status",
@@ -110,21 +108,22 @@ export const columns: ColumnDef<ApplicantRow>[] = [
       const status = row.original.status;
       let variant: "default" | "secondary" | "destructive" | "outline" = "outline";
       
-      if (status === "Verified") variant = "default"; // or a custom green class if available
+      if (status === "Approved") variant = "default";
+      if (status === "Verified") variant = "secondary";
       if (status === "Rejected") variant = "destructive";
-      if (status === "New") variant = "secondary";
+      if (status === "Pending") variant = "outline";
 
       return <Badge variant={variant}>{status}</Badge>;
     }
   },
   {
-    accessorKey: "createdAt",
+    accessorKey: "submissionDate",
     header: "Submitted On",
     cell: ({ row }) => {
-      const timestamp = row.original.createdAt;
-      if (!timestamp) return null;
+      const timestamp = row.original.submissionDate;
+      if (!timestamp) return <span>-</span>;
       const date = new Date(timestamp.seconds * 1000);
-      return <span>{format(date, 'PPP')}</span>;
+      return <span>{format(date, 'PP')}</span>;
     },
   },
   {

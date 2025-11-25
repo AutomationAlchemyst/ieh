@@ -4,17 +4,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Bell,
   BookCopy,
   BookUser,
   Home,
   Settings,
-  Shield,
   Shuffle,
   Users,
-  Users2,
-  GraduationCap
+  Wallet,
+  PieChart,
+  CalendarCheck // Import CalendarCheck
 } from "lucide-react";
+import { doc } from "firebase/firestore";
 
 import {
   Sidebar,
@@ -24,19 +24,21 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
-  SidebarGroup,
-  SidebarGroupLabel,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Logo } from "@/components/icons";
-import { getCurrentUser, UserRole } from "@/lib/data";
+import { UserRole } from "@/lib/data";
 import { Badge } from "./ui/badge";
+import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 
 const adminNav = [
   { href: "/dashboard", icon: Home, label: "Dashboard" },
   { href: "/dashboard/asatizah", icon: BookUser, label: "Asatizah Management" },
   { href: "/dashboard/students", icon: Users, label: "Student Management" },
   { href: "/dashboard/courses", icon: BookCopy, label: "Course Management" },
+  { href: "/dashboard/attendance", icon: CalendarCheck, label: "Attendance Logs" }, // Added here
+  { href: "/dashboard/bursary", icon: Wallet, label: "Bursary Management" },
+  { href: "/dashboard/reports", icon: PieChart, label: "Reports & Analytics" },
   { href: "/dashboard/matching", icon: Shuffle, label: "Matching Engine" },
 ];
 
@@ -45,14 +47,20 @@ const managementNav = [
   { href: "/dashboard/asatizah", icon: BookUser, label: "View Asatizah" },
   { href: "/dashboard/students", icon: Users, label: "View Students" },
   { href: "/dashboard/courses", icon: BookCopy, label: "View Courses" },
+  { href: "/dashboard/attendance", icon: CalendarCheck, label: "Attendance Logs" }, // Added here
+  { href: "/dashboard/bursary", icon: Wallet, label: "Bursary Management" },
+  { href: "/dashboard/reports", icon: PieChart, label: "Reports & Analytics" },
 ];
 
 const teacherNav:any[] = [
-  // Access removed for teachers as per instruction
+    { href: "/dashboard", icon: Home, label: "Dashboard" },
+    { href: "/dashboard/courses", icon: BookCopy, label: "My Courses" },
+    { href: "/dashboard/attendance", icon: CalendarCheck, label: "Attendance" }, // Added here
 ];
 
 const studentNav:any[] = [
-  // Access removed for students as per instruction
+    { href: "/dashboard", icon: Home, label: "Dashboard" },
+    { href: "/dashboard/courses", icon: BookCopy, label: "My Courses" },
 ];
 
 const navItems: Record<UserRole, typeof adminNav> = {
@@ -64,8 +72,20 @@ const navItems: Record<UserRole, typeof adminNav> = {
 
 export default function AppSidebar() {
   const pathname = usePathname();
-  const user = getCurrentUser();
-  const currentNav = navItems[user.role] || [];
+  const { user: firebaseUser } = useUser();
+  const firestore = useFirestore();
+
+  const userDocRef = useMemoFirebase(
+    () => (firebaseUser && firestore ? doc(firestore, "users", firebaseUser.uid) : null),
+    [firebaseUser, firestore]
+  );
+
+  const { data: userProfile } = useDoc<any>(userDocRef);
+
+  const userRole: UserRole = userProfile?.role || "student"; // Default to student if unknown
+  const currentNav = navItems[userRole] || [];
+
+  if (!firebaseUser) return null; // Or return a skeleton sidebar
 
   return (
     <Sidebar>
@@ -74,7 +94,7 @@ export default function AppSidebar() {
           <Logo className="size-10 text-sidebar-primary" />
           <div className="flex flex-col">
             <h2 className="text-base font-semibold font-headline text-sidebar-foreground">Ihsan Hub</h2>
-            <Badge variant="secondary" className="w-fit">{user.role}</Badge>
+            <Badge variant="secondary" className="w-fit capitalize">{userRole}</Badge>
           </div>
         </div>
       </SidebarHeader>

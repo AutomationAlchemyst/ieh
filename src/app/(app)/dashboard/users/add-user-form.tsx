@@ -4,6 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { serverTimestamp, collection } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +30,7 @@ import { useRouter } from "next/navigation";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import { useFirestore, addDocumentNonBlocking, useUser } from "@/firebase";
+import { useFirestore, addDocumentNonBlocking, useUser, useStorage } from "@/firebase";
 
 const availableDays = [
   { id: "monday", label: "Monday" },
@@ -97,6 +99,8 @@ const formSchema = z.object({
 export function AddUserForm({ defaultRole }: { defaultRole?: UserRole }) {
   const router = useRouter();
   const firestore = useFirestore();
+  const storage = useStorage();
+  const [arsCertFile, setArsCertFile] = useState<File | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -115,7 +119,7 @@ export function AddUserForm({ defaultRole }: { defaultRole?: UserRole }) {
 
     const { user } = useUser();
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!user) {
         toast({
             variant: "destructive",
@@ -124,14 +128,32 @@ export function AddUserForm({ defaultRole }: { defaultRole?: UserRole }) {
         });
         return;
     }
-    if (!firestore) {
+    if (!firestore || !storage) {
         toast({
             variant: "destructive",
             title: "Error",
-            description: "Firestore is not available. Please try again later.",
+            description: "Firebase services are not available. Please try again later.",
         });
         return;
     }
+    
+    let arsCertUrl = "";
+    if (arsCertFile) {
+        try {
+            const storageRef = ref(storage, `ars_certs/${Date.now()}_${arsCertFile.name}`);
+            const snapshot = await uploadBytes(storageRef, arsCertFile);
+            arsCertUrl = await getDownloadURL(snapshot.ref);
+        } catch (error) {
+            console.error("Upload failed", error);
+            toast({
+                variant: "destructive",
+                title: "Upload Failed",
+                description: "Failed to upload ARS Certificate. Please try again.",
+            });
+            return;
+        }
+    }
+
     const usersCollection = collection(firestore, 'users');
 
     const newUser = {
@@ -140,7 +162,8 @@ export function AddUserForm({ defaultRole }: { defaultRole?: UserRole }) {
       role: values.role as UserRole,
       avatar: `https://picsum.photos/seed/avatar${Math.random()}/100/100`,
       createdAt: serverTimestamp(),
-      status: "Active",
+      status: values.role === 'teacher' ? "Inactive" : "Active",
+      verificationStatus: values.role === 'teacher' ? "New" : "Verified",
       contactNo: values.contactNo,
       gender: values.gender,
       preferredLocations: [values.location1, values.location2, values.location3].filter(Boolean) as string[],
@@ -151,6 +174,7 @@ export function AddUserForm({ defaultRole }: { defaultRole?: UserRole }) {
       preferredSyllabus: values.preferredSyllabus,
       canTeachSpecialNeeds: values.canTeachSpecialNeeds,
       payNow: values.payNow,
+      arsCertUrl: arsCertUrl,
     };
     
     addDocumentNonBlocking(usersCollection, newUser);
@@ -162,6 +186,7 @@ export function AddUserForm({ defaultRole }: { defaultRole?: UserRole }) {
 
     router.refresh();
     form.reset();
+    setArsCertFile(null);
   }
 
   return (
@@ -214,6 +239,15 @@ export function AddUserForm({ defaultRole }: { defaultRole?: UserRole }) {
         {isAsatizahForm && (
           <>
             <Separator />
+            <div className="space-y-2">
+                <FormLabel>ARS Certificate Upload</FormLabel>
+                <Input 
+                    type="file" 
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => setArsCertFile(e.target.files ? e.target.files[0] : null)}
+                />
+                <p className="text-xs text-muted-foreground">Upload your Asatizah Recognition Scheme certificate (PDF or Image).</p>
+            </div>
             <FormField
               control={form.control}
               name="gender"

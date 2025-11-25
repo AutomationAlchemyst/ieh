@@ -4,6 +4,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { collection, query, where, serverTimestamp } from "firebase/firestore";
+import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking } from "@/firebase";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,10 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { users, courses } from "@/lib/data";
-import { useRouter } from "next/navigation";
-
-const teachers = users.filter((u) => u.role === "teacher");
+import type { User } from "@/lib/data";
 
 const formSchema = z.object({
   title: z.string().min(2, {
@@ -40,44 +40,55 @@ const formSchema = z.object({
   teacherId: z.string({
     required_error: "Please select a teacher.",
   }),
+  status: z.enum(["Ongoing", "Completed"]),
+  tags: z.string().optional(),
 });
 
 export function AddCourseForm() {
   const router = useRouter();
+  const firestore = useFirestore();
+  
+  // Fetch teachers
+  const usersCollection = useMemoFirebase(() => collection(firestore, "users"), [firestore]);
+  const teachersQuery = useMemoFirebase(() => query(usersCollection, where("role", "==", "teacher")), [usersCollection]);
+  const { data: teachers } = useCollection<User>(teachersQuery);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
       description: "",
+      status: "Ongoing",
+      tags: "",
     },
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    // In a real app, you'd send this to your API.
-    // For this demo, we'll just add it to the mock data.
+    if (!firestore) return;
+
+    const coursesCollection = collection(firestore, 'courses');
+
     const newCourse = {
-        id: `C${String(courses.length + 1).padStart(3, '0')}`,
         title: values.title,
         description: values.description,
         teacherId: values.teacherId,
-        thumbnail: `https://picsum.photos/seed/course${courses.length + 1}/600/400`,
-        modules: [],
-        studentIds: [],
+        thumbnail: `https://picsum.photos/seed/${values.title.replace(/\s/g, '')}/600/400`, // Simple placeholder generation
+        modules: [], // Initialize empty
+        studentIds: [], // Initialize empty
+        status: values.status,
+        tags: values.tags ? values.tags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
+        createdAt: serverTimestamp(),
     };
     
-    // This is a mock update. In a real app, you'd handle state properly.
-    courses.push(newCourse);
+    addDocumentNonBlocking(coursesCollection, newCourse);
 
     toast({
       title: "Course Created!",
       description: `The course "${values.title}" has been successfully created.`,
     });
 
-    // In a real app, you would likely invalidate a query cache here
-    // to refetch the courses. For the demo, we'll refresh the page.
     router.refresh();
-    
-    // We could also close the dialog here, but we'll let the user do it manually.
+    form.reset();
   }
 
   return (
@@ -126,7 +137,7 @@ export function AddCourseForm() {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {teachers.map((teacher) => (
+                  {teachers?.map((teacher) => (
                     <SelectItem key={teacher.id} value={teacher.id}>
                       {teacher.name}
                     </SelectItem>
@@ -137,6 +148,42 @@ export function AddCourseForm() {
             </FormItem>
           )}
         />
+         <div className="grid grid-cols-2 gap-4">
+            <FormField
+            control={form.control}
+            name="status"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Status</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                    <SelectItem value="Ongoing">Ongoing</SelectItem>
+                    <SelectItem value="Completed">Completed</SelectItem>
+                    </SelectContent>
+                </Select>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+             <FormField
+                control={form.control}
+                name="tags"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Tags (comma separated)</FormLabel>
+                    <FormControl>
+                        <Input placeholder="Fiqh, Beginner, 2025" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+            />
+        </div>
         <Button type="submit" className="w-full">Create Course</Button>
       </form>
     </Form>

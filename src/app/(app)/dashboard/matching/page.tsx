@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle, Users, MapPin, Calendar, UserCheck, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,23 +13,34 @@ import {
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { users } from "@/lib/data";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { findMatches, MatchResult } from "@/services/matching";
 import { Badge } from "@/components/ui/badge";
-
-const students = users.filter((u) => u.role === "student");
+import { useCollection, useFirestore, useMemoFirebase, addDocumentNonBlocking } from "@/firebase";
+import { collection, query, where, serverTimestamp } from "firebase/firestore";
+import { generateMatchesAction } from "@/app/actions";
+import { toast } from "@/hooks/use-toast";
+import type { User } from "@/lib/data";
 
 export default function MatchingPage() {
+  const firestore = useFirestore();
   const [step, setStep] = useState(1);
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [locationPreferences, setLocationPreferences] = useState<string[]>([]);
   const [availabilityPreferences, setAvailabilityPreferences] = useState<string[]>([]);
   
   const [isMatching, setIsMatching] = useState(false);
-  const [matchResults, setMatchResults] = useState<MatchResult[]>([]);
+  const [matchResults, setMatchResults] = useState<any[]>([]);
   const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null);
+
+  // Fetch Students
+  const usersCollection = useMemoFirebase(() => collection(firestore, "users"), [firestore]);
+  const studentsQuery = useMemoFirebase(() => query(usersCollection, where("role", "==", "student")), [usersCollection]);
+  const { data: students } = useCollection<User>(studentsQuery);
+
+  // Fetch Teachers
+  const teachersQuery = useMemoFirebase(() => query(usersCollection, where("role", "==", "teacher")), [usersCollection]);
+  const { data: teachers } = useCollection<User>(teachersQuery);
 
   const handleStudentSelect = (studentId: string) => {
     setSelectedStudents((prev) =>
@@ -52,20 +63,86 @@ export default function MatchingPage() {
   };
 
   const handleFindMatches = async () => {
+    if (!students || !teachers) return;
+
     setStep(3);
     setIsMatching(true);
+    
+    // Prepare data for AI
+    const selectedStudentObjects = students.filter(s => selectedStudents.includes(s.id));
+    
     try {
-        const results = await findMatches({
-            location: locationPreferences,
-            availability: availabilityPreferences
-        });
-        setMatchResults(results);
+        // Call Server Action
+        const aiResults = await generateMatchesAction(
+            selectedStudentObjects, 
+            teachers, 
+            {
+                location: locationPreferences,
+                availability: availabilityPreferences
+            }
+        );
+        
+        // Merge AI scores with full teacher objects for display
+        const enrichedResults = aiResults.map((result: any) => {
+            const teacher = teachers.find(t => t.id === result.teacherId);
+            return {
+                ...result,
+                teacher: teacher // Attach full teacher profile
+            };
+        }).filter((r: any) => r.teacher); // Filter out if teacher not found
+
+        setMatchResults(enrichedResults);
+
     } catch (error) {
         console.error("Matching failed", error);
+        toast({
+            variant: "destructive",
+            title: "AI Error",
+            description: "Failed to generate matches. Please try again.",
+        });
     } finally {
         setIsMatching(false);
     }
   };
+
+  const handleConfirmMatch = () => {
+      if (!firestore || !selectedTeacherId) return;
+
+      const matchesCollection = collection(firestore, 'matches');
+      const groupsCollection = collection(firestore, 'ulumi_groups');
+      
+      const selectedTeacher = matchResults.find(r => r.teacherId === selectedTeacherId)?.teacher;
+      const groupName = selectedTeacher ? `Class with ${selectedTeacher.name}` : "New Class Group";
+      const location = locationPreferences[0] || "Main Campus"; // Default to first pref or fallback
+
+      const matchData = {
+          studentIds: selectedStudents,
+          teacherId: selectedTeacherId,
+          status: "approved", // Auto-approving for this flow to enable Attendance immediately
+          createdAt: serverTimestamp(),
+          adminCriteria: {
+              location: locationPreferences,
+              availability: availabilityPreferences
+          }
+      };
+
+      const groupData = {
+          name: groupName,
+          asatizahId: selectedTeacherId,
+          studentIds: selectedStudents,
+          meetingLocation: location,
+          createdAt: serverTimestamp(),
+          status: "Active"
+      };
+
+      // 1. Create the Match Record
+      addDocumentNonBlocking(matchesCollection, matchData);
+
+      // 2. Create the Active Group (so it shows in Attendance)
+      addDocumentNonBlocking(groupsCollection, groupData);
+
+      setStep(4);
+  }
 
   const progress = (step / 4) * 100;
 
@@ -92,7 +169,7 @@ export default function MatchingPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 max-h-[400px] overflow-y-auto p-2 sm:p-4 flex-1">
-                {students.map((student) => (
+                {students?.map((student) => (
                   <div
                     key={student.id}
                     className="flex items-center space-x-3 rounded-md border p-3 hover:bg-muted/50"
@@ -183,7 +260,7 @@ export default function MatchingPage() {
                 {isMatching ? (
                     <div className="flex flex-col items-center justify-center h-48 space-y-4">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        <p className="text-muted-foreground animate-pulse">Consulting AI Knowledge Base...</p>
+                        <p className="text-muted-foreground animate-pulse">Genkit AI is analyzing profiles...</p>
                     </div>
                 ) : matchResults.length > 0 ? (
                     matchResults.map(({ teacher, score, reasoning }) => (
@@ -212,8 +289,8 @@ export default function MatchingPage() {
                                 {reasoning}
                             </p>
                             <div className="flex flex-wrap gap-2 pt-2">
-                                {teacher.preferredLocations?.map(l => <Badge key={l} variant="outline" className="text-xs">{l}</Badge>)}
-                                {teacher.availableDays?.map(d => <Badge key={d} variant="outline" className="text-xs">{d}</Badge>)}
+                                {teacher.preferredLocations?.map((l: string) => <Badge key={l} variant="outline" className="text-xs">{l}</Badge>)}
+                                {teacher.availableDays?.map((d: string) => <Badge key={d} variant="outline" className="text-xs">{d}</Badge>)}
                             </div>
                         </div>
                         
@@ -234,7 +311,7 @@ export default function MatchingPage() {
                 <Button variant="outline" onClick={() => setStep(2)}>
                   <ArrowLeft className="mr-2 h-4 w-4" /> Back
                 </Button>
-                <Button onClick={() => setStep(4)} disabled={!selectedTeacherId}>
+                <Button onClick={handleConfirmMatch} disabled={!selectedTeacherId}>
                   Confirm Match <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </CardFooter>
@@ -246,9 +323,9 @@ export default function MatchingPage() {
                  <div className="rounded-full bg-green-100 p-6 mb-4">
                      <CheckCircle className="h-16 w-16 text-green-600" />
                  </div>
-                <CardTitle className="text-3xl text-green-800">Match Confirmed!</CardTitle>
+                <CardTitle className="text-3xl text-green-800">Match Proposed!</CardTitle>
                 <CardDescription className="text-lg mt-2 max-w-md">
-                  The students and teacher have been notified. A new <span className="font-semibold text-foreground">Ulumi Group</span> has been created successfully.
+                  The match has been recorded and is now <span className="font-semibold text-foreground">Pending Approval</span>. The teacher and students will be notified once you finalize the process.
                 </CardDescription>
               </CardHeader>
               <CardContent className="text-center pb-12">

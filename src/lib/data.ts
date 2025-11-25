@@ -13,6 +13,7 @@ export interface User {
   avatar: string;
   createdAt: Timestamp | Date | string; // Allow for Firestore Timestamp, Date object, or string
   status: "Active" | "Inactive";
+  verificationStatus?: "New" | "Verified" | "Rejected"; // Verification status for the user
   // Asatizah specific fields
   contactNo?: string;
   gender?: "Male" | "Female";

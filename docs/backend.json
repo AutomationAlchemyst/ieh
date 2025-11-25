@@ -26,6 +26,11 @@
         "role": {
           "type": "string",
           "description": "User's role (Admin, Management, Teacher/Asatizah, Student)."
+        },
+        "verificationStatus": {
+          "type": "string",
+          "description": "Status of the user's account verification (e.g., 'New', 'Verified', 'Rejected').",
+          "default": "New"
         }
       },
       "required": [
@@ -53,12 +58,25 @@
         "description": {
           "type": "string",
           "description": "Description of the course."
+        },
+        "status": {
+          "type": "string",
+          "description": "Lifecycle status of the course (e.g., 'Ongoing', 'Completed').",
+          "default": "Ongoing"
+        },
+        "tags": {
+          "type": "array",
+          "description": "Tags associated with the course for taxonomy and filtering.",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
         "id",
         "title",
-        "description"
+        "description",
+        "status"
       ]
     },
     "Module": {
@@ -158,6 +176,131 @@
         "courseId",
         "enrollmentDate"
       ]
+    },
+    "BursaryApplication": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "BursaryApplication",
+      "type": "object",
+      "description": "Represents an application for financial aid.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the BursaryApplication entity."
+        },
+        "applicantId": {
+          "type": "string",
+          "description": "Reference to User (Applicant). (Relationship: User 1:N BursaryApplication)"
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the application (e.g., 'Pending', 'Verified', 'Approved', 'Rejected').",
+          "default": "Pending"
+        },
+        "submissionDate": {
+          "type": "string",
+          "description": "Date of application submission.",
+          "format": "date-time"
+        },
+        "details": {
+          "type": "object",
+          "description": "Structured details of the application (income, reason, etc.)."
+        }
+      },
+      "required": [
+        "id",
+        "applicantId",
+        "status",
+        "submissionDate"
+      ]
+    },
+    "Payment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Payment",
+      "type": "object",
+      "description": "Represents a payment or disbursement.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Payment entity."
+        },
+        "bursaryId": {
+          "type": "string",
+          "description": "Reference to BursaryApplication, if applicable."
+        },
+        "amount": {
+          "type": "number",
+          "description": "Amount of the payment."
+        },
+        "date": {
+          "type": "string",
+          "description": "Date of the payment.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the payment (e.g., 'Pending', 'Paid', 'Failed')."
+        }
+      },
+      "required": [
+        "id",
+        "amount",
+        "date",
+        "status"
+      ]
+    },
+    "NotificationTemplate": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "NotificationTemplate",
+      "type": "object",
+      "description": "Represents a template for system notifications.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the template."
+        },
+        "name": {
+          "type": "string",
+          "description": "Internal name of the template."
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of notification (e.g., 'Email', 'SMS')."
+        },
+        "subject": {
+          "type": "string",
+          "description": "Subject line (for emails)."
+        },
+        "body": {
+          "type": "string",
+          "description": "Body content of the template, supporting variables."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "type",
+        "body"
+      ]
+    },
+    "SystemSetting": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SystemSetting",
+      "type": "object",
+      "description": "Represents a global system configuration setting.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Key identifier for the setting (e.g., 'tax_rate', 'semester_start')."
+        },
+        "value": {
+          "type": "object",
+          "description": "The value of the setting (can be primitive or object)."
+        }
+      },
+      "required": [
+        "id",
+        "value"
+      ]
     }
   },
   "auth": {
@@ -175,7 +318,7 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Stores user profiles.  Accessible only to the user themselves or admins.",
+          "description": "Stores user profiles.  Accessible only to the user themselves or admins. Includes 'verificationStatus'.",
           "params": [
             {
               "name": "userId",
@@ -191,7 +334,7 @@
           "schema": {
             "$ref": "#/backend/entities/Course"
           },
-          "description": "Stores course information. Accessible to any logged-in user for reading, but restricted to admin roles for creation/modification.",
+          "description": "Stores course information (including 'status' and 'tags'). Accessible to any logged-in user for reading, but restricted to admin roles for creation/modification.",
           "params": [
             {
               "name": "courseId",
@@ -273,6 +416,70 @@
         }
       },
       {
+        "path": "/bursaries/{applicationId}",
+        "definition": {
+          "entityName": "BursaryApplication",
+          "schema": {
+            "$ref": "#/backend/entities/BursaryApplication"
+          },
+          "description": "Stores bursary applications. Restricted access to Admins and the specific Applicant.",
+          "params": [
+            {
+              "name": "applicationId",
+              "description": "The unique identifier of the application."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/payments/{paymentId}",
+        "definition": {
+          "entityName": "Payment",
+          "schema": {
+            "$ref": "#/backend/entities/Payment"
+          },
+          "description": "Stores payment records. Admin only access mostly, or read-only for associated users.",
+          "params": [
+            {
+              "name": "paymentId",
+              "description": "The unique identifier of the payment."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/notification_templates/{templateId}",
+        "definition": {
+          "entityName": "NotificationTemplate",
+          "schema": {
+            "$ref": "#/backend/entities/NotificationTemplate"
+          },
+          "description": "Stores templates for system notifications. Admin access only.",
+          "params": [
+            {
+              "name": "templateId",
+              "description": "The unique identifier of the template."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/settings/{settingId}",
+        "definition": {
+          "entityName": "SystemSetting",
+          "schema": {
+            "$ref": "#/backend/entities/SystemSetting"
+          },
+          "description": "Stores global system settings. Admin access only.",
+          "params": [
+            {
+              "name": "settingId",
+              "description": "The key identifier of the setting."
+            }
+          ]
+        }
+      },
+      {
         "path": "/roles_admin/{userId}",
         "definition": {
           "entityName": "User",
@@ -289,6 +496,4 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to provide a secure, scalable, and easily debuggable backend for the Ihsan Education Hub Portal. The structure adheres to the principles of Authorization Independence, Clarity of Intent, DBAC (Database-Based Access Control), and QAPs (Queries are not Filters). It leverages denormalization and structural segregation to simplify security rules and optimize performance.\n\n**Authorization Independence:**\n\n*   Authorization context is denormalized into subcollections where needed. For example, the `UlumiGroup` entity stores `asatizahId` directly within the document, and the `/users/{userId}/ulumiGroups/{ulumiGroupId}` collection stores a denormalized `members` map, eliminating the need for `get()` calls in security rules and enabling atomic operations.\n\n**QAPs (Rules are not Filters):**\n\n*   Structural segregation ensures that collections contain documents with homogeneous security requirements. This enables secure list operations without complex filtering in rules.\n\n**Structure Overview:**\n\n*   `/users/{userId}`: Stores user profiles. Uses path-based ownership for private user data.\n*   `/courses/{courseId}`: Stores course information. Open to any logged-in user for reading, but restricted for creation/modification to admin roles.\n*   `/courses/{courseId}/modules/{moduleId}`: Stores modules associated with courses. Inherits authorization from the parent course, with additional restrictions on creation/modification.\n*   `/ulumi_groups/{ulumiGroupId}`: Stores ulumi group information. Access control is managed via the `asatizahId` field.\n*   `/users/{userId}/ulumiGroups/{ulumiGroupId}`: Stores ulumi groups specific to students. Includes denormalized `members` field to determine access to Ulumi group details. This subcollection serves as a join between users and Ulumi groups, enabling QAPs based on a user's membership in a group.\n*   `/enrollments/{enrollmentId}`: Stores enrollments. Student and Admin roles are checked for enrollment access.\n*   `/roles_admin/{userId}`: Documents in this collection indicate that the user has admin privileges. Existence-based access control."
-  }
-}
+    "reasoning": "The Firestore structure is designed to provide a secure, scalable, and easily debuggable backend for the Ihsan Education Hub Portal. The structure adheres to the principles of Authorization Independence, Clarity of Intent, DBAC (Database-Based Access Control), and QAPs (Queries are not Filters). It leverages denormalization and structural segregation to simplify security rules and optimize performance.\n\n**Authorization Independence:**\n\n*   Authorization context is denormalized into subcollections where needed. For example, the `UlumiGroup` entity stores `asatizahId` directly within the document, and the `/users/{userId}/ulumiGroups/{ulumiGroupId}` collection stores a denormalized `members` map, eliminating the need for `get()` calls in security rules and enabling atomic operations.\n\n**QAPs (Rules are not Filters):**\n\n*   Structural segregation ensures that collections contain documents with homogeneous security requirements. This enables secure list operations without complex filtering in rules.\n\n**Structure Overview:**\n\n*   `/users/{userId}`: Stores user profiles. Uses path-based ownership for private user data. Now includes `verificationStatus`.\n*   `/courses/{courseId}`: Stores course information. Open to any logged-in user for reading, but restricted for creation/modification to admin roles. Now includes `status` and `tags`.\n*   `/courses/{courseId}/modules/{moduleId}`: Stores modules associated with courses. Inherits authorization from the parent course, with additional restrictions on creation/modification.\n*   `/ulumi_groups/{ulumiGroupId}`: Stores ulumi group information. Access control is managed via the `asatizahId` field.\n*   `/users/{userId}/ulumiGroups/{ulumiGroupId}`: Stores ulumi groups specific to students. Includes denormalized `members` field to determine access to Ulumi group details. This subcollection serves as a join between users and Ulumi groups, enabling QAPs based on a user's membership in a group.\n*   `/enrollments/{enrollmentId}`: Stores enrollments. Student and Admin roles are checked for enrollment access.\n*   `/bursaries/{applicationId}`: Stores bursary applications. Restricted access to Admins and the specific Applicant.\n*   `/payments/{paymentId}`: Stores payment records. Admin only access mostly, or read-only for associated users.\n*   `/notification_templates/{templateId}`: Stores templates for system notifications. Admin access only.\n*   `/settings/{settingId}`: Stores global system settings. Admin access only.\n*   `/roles_admin/{userId}`: Documents in this collection indicate that the user has admin privileges. Existence-based access control."

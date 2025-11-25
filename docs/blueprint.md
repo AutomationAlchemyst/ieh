@@ -2,13 +2,32 @@
 
 ## Core Features:
 
-- User Authentication: Secure email/password login system with role-based access control (Admin, Management, Teacher/Asatizah, Student) managed by Firebase Authentication custom claims.
-- Automated Matching Engine: Multi-step interface for admins to match students with Asatizah based on location and availability, automating the manual matching process.
-- Course Management (LMS): CRUD functionality for courses, including a dynamic interface to add, edit, reorder, and delete modules within a course.
-- User Management: CRUD functionality for students, trainers, and asatizah.
-- Dashboard: Role-based dashboard displaying key metrics and relevant information for each user role.
-- Course Details Page: Display course title, description, and modules for enrolled students and assigned teachers.
-- Ulumi Group Details Page: Display group name, meeting location, and a list of students in the group for assigned Asatizah.
+### 1. User Management (The Actors)
+- **Student Management**: View master list, filter/search for specific students, and perform verification actions (Approve/Reject new sign-ups).
+- **Trainer Management**: View, search, and approve/edit trainer profiles.
+- **Verification Queue**: A dedicated flow for "Unverified" users, requiring admin validation before granting full access.
+- **Authentication**: Secure email/password login system with role-based access control (Admin, Management, Teacher/Asatizah, Student).
+
+### 2. Bursary Management (Financial Aid)
+- **Application Workflow**: A pipeline to view all incoming bursary applications with decision-making controls (Verify, Approve, or Reject).
+- **Payment Tracking**: A system to track the status of payouts or disbursements associated with approved bursaries.
+
+### 3. Course Overview (The Product)
+- **Lifecycle Management**: Classify courses as "Ongoing" (active) or "Completed" (archived).
+- **CRUD Operations**: Capabilities to Add new courses, Edit existing ones, and manage Modules.
+- **Enrollment & Taxonomy**: Tagging features ("Add Course to Tag") and visibility into enrolled students.
+- **Course Details**: Display course title, description, and modules.
+
+### 4. Reports & Analytics (Business Intelligence)
+- **Growth Metrics**: Track "Registration per Year" to monitor uptake.
+- **Performance Metrics**: Analyze "User Demographics," "Passing Rates," and "Course Completion Statistics."
+- **Financial Audit**: A specific report for "Payment Stats / Audit," linking back to bursary disbursements.
+
+### 5. Settings / Configuration (System Control)
+- **AI Integration**: Integration for automated support or grading (using Genkit).
+- **Access Control**: Role-Based Access Control (RBAC) management.
+- **Communication**: Management of "Notification Templates" (email/SMS).
+- **System Logic**: Management of system-wide variables, "Discount Management," and Matching Engine configuration.
 
 ## Style Guidelines:
 
