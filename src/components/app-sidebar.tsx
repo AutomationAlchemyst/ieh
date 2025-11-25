@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import {
   BookCopy,
   BookUser,
@@ -28,7 +29,6 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { Logo } from "@/components/icons";
 import { UserRole } from "@/lib/data";
 import { Badge } from "./ui/badge";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
@@ -111,7 +111,13 @@ export default function AppSidebar() {
       <div className="glass m-4 h-[calc(100vh-2rem)] w-full rounded-2xl flex flex-col overflow-hidden shadow-2xl">
         <SidebarHeader className="p-4 pb-0">
             <div className="flex items-center gap-3 px-2">
-            <Logo className="size-8 text-primary drop-shadow-[0_0_10px_rgba(var(--primary),0.5)]" />
+            <Image 
+                src="/images/iehlogo.png" 
+                alt="Ihsan Hub Logo" 
+                width={40} 
+                height={40} 
+                className="object-contain drop-shadow-[0_0_10px_rgba(var(--primary),0.5)]" 
+            />
             <div className="flex flex-col">
                 <h2 className="text-lg font-bold font-headline tracking-tight text-foreground">Ihsan Hub</h2>
                 <div className="flex items-center gap-2 mt-1">

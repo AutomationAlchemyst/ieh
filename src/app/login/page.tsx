@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Logo } from "@/components/icons";
 import { useAuth } from "@/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { toast } from "@/hooks/use-toast";
@@ -40,7 +39,6 @@ export default function LoginPage() {
     }
     
     try {
-      // For this demo, we'll sign in with the provided email and password.
       await signInWithEmailAndPassword(auth, email, password);
       router.push("/dashboard");
     } catch (error) {
@@ -53,96 +51,91 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
-      <div className="relative hidden h-full bg-muted lg:block">
-        <Image
-          src="https://picsum.photos/seed/loginbg/1920/1080"
-          alt="Abstract background image"
-          data-ai-hint="abstract geometric"
-          fill
-          className="object-cover"
-        />
-        <div className="relative z-10 flex h-full flex-col justify-end bg-black/40 p-10 text-white">
-          <div className="mb-4 inline-flex items-center gap-3 text-2xl font-bold font-headline">
-            <Logo className="h-10 w-10" />
-            Ihsan Education Hub
-          </div>
-          <blockquote className="space-y-2">
-            <p className="text-lg">
-              &ldquo;The best of you are those who learn the Qur'an and teach
-              it.&rdquo;
-            </p>
-            <footer className="text-sm">Prophetic Saying (Hadith)</footer>
-          </blockquote>
+    <div className="flex min-h-screen w-full items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-8">
+        {/* Logo Section */}
+        <div className="flex flex-col items-center space-y-4">
+            <div className="relative h-24 w-24 rounded-2xl bg-white/5 p-4 shadow-2xl backdrop-blur-xl border border-white/10 flex items-center justify-center">
+                <Image
+                    src="/images/iehlogo.png"
+                    alt="Ihsan Education Hub Logo"
+                    width={80}
+                    height={80}
+                    className="object-contain drop-shadow-[0_0_15px_rgba(var(--primary),0.6)]"
+                    priority
+                />
+            </div>
+            <div className="text-center">
+                <h1 className="text-3xl font-bold font-headline tracking-tight text-white drop-shadow-md">
+                    Ihsan Hub
+                </h1>
+                <p className="text-sm text-white/60 mt-2">
+                    Secure Access Portal
+                </p>
+            </div>
         </div>
-      </div>
-      <div className="flex items-center justify-center py-12">
-        <div className="mx-auto grid w-[350px] gap-6">
-          <div className="grid gap-2 text-center">
-            <h1 className="text-3xl font-bold font-headline text-primary">Login</h1>
-            <p className="text-balance text-muted-foreground">
-              Enter your email below to login to your account
-            </p>
-          </div>
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-2xl font-headline">Welcome Back</CardTitle>
-              <CardDescription>
-                Use your credentials to access the portal.
+
+        {/* Login Card */}
+        <Card className="glass border-white/10 shadow-2xl">
+            <CardHeader className="space-y-1 text-center pb-2">
+              <CardTitle className="text-xl font-medium text-white/90">Welcome Back</CardTitle>
+              <CardDescription className="text-white/50">
+                Enter your credentials to continue
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleLogin} className="grid gap-4">
+              <form onSubmit={handleLogin} className="grid gap-5">
                 <div className="grid gap-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email" className="text-white/80">Email</Label>
                   <div className="relative">
-                    <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
                     <Input
                       id="email"
                       name="email"
                       type="email"
-                      placeholder="m@example.com"
+                      placeholder="name@mtfa.org"
                       required
-                      className="pl-9"
-                      
+                      className="pl-10 bg-black/20 border-white/10 text-white placeholder:text-white/20 focus:border-primary/50 focus:ring-primary/50 transition-all"
                     />
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <div className="flex items-center">
-                    <Label htmlFor="password">Password</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password" className="text-white/80">Password</Label>
                     <Link
                       href="#"
-                      className="ml-auto inline-block text-sm underline"
+                      className="text-xs text-primary hover:text-primary/80 underline-offset-4 hover:underline"
                     >
-                      Forgot your password?
+                      Forgot password?
                     </Link>
                   </div>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
                     <Input
                       id="password"
                       name="password"
                       type="password"
                       required
-                      className="pl-9"
+                      className="pl-10 bg-black/20 border-white/10 text-white placeholder:text-white/20 focus:border-primary/50 focus:ring-primary/50 transition-all"
                       placeholder="••••••••"
-                      
                     />
                   </div>
                 </div>
-                <Button type="submit" className="w-full bg-accent hover:bg-accent/90">
-                  Login
+                <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 transition-all duration-300 mt-2">
+                  Sign In
                 </Button>
               </form>
             </CardContent>
-          </Card>
-          <div className="mt-4 text-center text-sm">
-            Don&apos;t have an account?{" "}
-            <Link href="#" className="underline">
-              Contact administration
-            </Link>
-          </div>
+        </Card>
+
+        {/* Footer / Quote */}
+        <div className="text-center space-y-4">
+            <p className="text-sm text-white/40">
+                Protected by MTFA Security
+            </p>
+            <blockquote className="text-xs italic text-white/30 max-w-xs mx-auto border-l-2 border-white/10 pl-3">
+              &ldquo;The best of you are those who learn the Qur'an and teach it.&rdquo;
+            </blockquote>
         </div>
       </div>
     </div>
