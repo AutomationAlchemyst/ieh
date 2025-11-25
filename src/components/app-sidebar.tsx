@@ -107,71 +107,74 @@ export default function AppSidebar() {
   if (!firebaseUser) return null; 
 
   return (
-    <Sidebar>
-      <SidebarHeader>
-        <div className="flex items-center gap-2">
-          <Logo className="size-10 text-sidebar-primary" />
-          <div className="flex flex-col">
-            <h2 className="text-base font-semibold font-headline text-sidebar-foreground">Ihsan Hub</h2>
-            <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="w-fit capitalize">{activeRole}</Badge>
-                {isDevAdmin && activeRole !== "admin" && (
-                    <Badge variant="outline" className="text-[10px] h-5 px-1">View Mode</Badge>
-                )}
-            </div>
-          </div>
-        </div>
-      </SidebarHeader>
-      <SidebarContent>
-        <SidebarMenu>
-          {currentNav.map((item) => (
-            <SidebarMenuItem key={item.href}>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))}
-                tooltip={item.label}
-              >
-                <Link href={item.href}>
-                  <item.icon />
-                  <span>{item.label}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
-      </SidebarContent>
-      <SidebarFooter>
-        {isDevAdmin && (
-            <div className="px-2 mb-2">
-                <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
-                    <Eye className="h-3 w-3" />
-                    <span>Simulate View</span>
+    <Sidebar className="border-none bg-transparent">
+      <div className="glass m-4 h-[calc(100vh-2rem)] w-full rounded-2xl flex flex-col overflow-hidden shadow-2xl">
+        <SidebarHeader className="p-4 pb-0">
+            <div className="flex items-center gap-3 px-2">
+            <Logo className="size-8 text-primary drop-shadow-[0_0_10px_rgba(var(--primary),0.5)]" />
+            <div className="flex flex-col">
+                <h2 className="text-lg font-bold font-headline tracking-tight text-foreground">Ihsan Hub</h2>
+                <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="secondary" className="w-fit capitalize text-[10px] px-1.5 py-0 h-5 bg-white/10 hover:bg-white/20 border-white/10 backdrop-blur-md">{activeRole}</Badge>
+                    {isDevAdmin && activeRole !== "admin" && (
+                        <Badge variant="outline" className="text-[10px] h-5 px-1 border-primary/30 text-primary">View Mode</Badge>
+                    )}
                 </div>
-                <Select value={activeRole} onValueChange={(val) => setSimulatedRole(val as UserRole)}>
-                    <SelectTrigger className="h-8">
-                        <SelectValue placeholder="Select role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="management">Management</SelectItem>
-                        <SelectItem value="teacher">Teacher</SelectItem>
-                        <SelectItem value="student">Student</SelectItem>
-                    </SelectContent>
-                </Select>
             </div>
-        )}
-        <Separator className="my-2 bg-sidebar-border" />
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Settings">
-              <Link href="/dashboard/settings">
-                <Settings />
-                <span>Settings</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
+            </div>
+        </SidebarHeader>
+        <SidebarContent className="px-2 py-4">
+            <SidebarMenu>
+            {currentNav.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton
+                    asChild
+                    isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))}
+                    tooltip={item.label}
+                    className="data-[active=true]:bg-primary/20 data-[active=true]:text-primary data-[active=true]:font-semibold hover:bg-white/5 transition-all duration-200 rounded-lg px-3 py-2"
+                >
+                    <Link href={item.href} className="flex items-center gap-3">
+                    <item.icon className="h-5 w-5" />
+                    <span>{item.label}</span>
+                    </Link>
+                </SidebarMenuButton>
+                </SidebarMenuItem>
+            ))}
+            </SidebarMenu>
+        </SidebarContent>
+        <SidebarFooter className="p-4 pt-0">
+            {isDevAdmin && (
+                <div className="px-2 mb-4">
+                    <div className="flex items-center gap-2 mb-2 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                        <Eye className="h-3 w-3" />
+                        <span>Simulate View</span>
+                    </div>
+                    <Select value={activeRole} onValueChange={(val) => setSimulatedRole(val as UserRole)}>
+                        <SelectTrigger className="h-8 bg-white/5 border-white/10 text-xs focus:ring-primary/50">
+                            <SelectValue placeholder="Select role" />
+                        </SelectTrigger>
+                        <SelectContent className="glass border-white/10">
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="management">Management</SelectItem>
+                            <SelectItem value="teacher">Teacher</SelectItem>
+                            <SelectItem value="student">Student</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            )}
+            <Separator className="my-2 bg-white/10" />
+            <SidebarMenu>
+            <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Settings" className="hover:bg-white/5 rounded-lg">
+                <Link href="/dashboard/settings">
+                    <Settings className="h-5 w-5" />
+                    <span>Settings</span>
+                </Link>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+            </SidebarMenu>
+        </SidebarFooter>
+      </div>
     </Sidebar>
   );
 }
