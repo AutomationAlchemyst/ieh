@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 import {
   BookCopy,
   BookUser,
@@ -12,7 +13,8 @@ import {
   Users,
   Wallet,
   PieChart,
-  CalendarCheck // Import CalendarCheck
+  CalendarCheck,
+  Eye
 } from "lucide-react";
 import { doc } from "firebase/firestore";
 
@@ -30,13 +32,14 @@ import { Logo } from "@/components/icons";
 import { UserRole } from "@/lib/data";
 import { Badge } from "./ui/badge";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const adminNav = [
   { href: "/dashboard", icon: Home, label: "Dashboard" },
   { href: "/dashboard/asatizah", icon: BookUser, label: "Asatizah Management" },
   { href: "/dashboard/students", icon: Users, label: "Student Management" },
   { href: "/dashboard/courses", icon: BookCopy, label: "Course Management" },
-  { href: "/dashboard/attendance", icon: CalendarCheck, label: "Attendance Logs" }, // Added here
+  { href: "/dashboard/attendance", icon: CalendarCheck, label: "Attendance Logs" }, 
   { href: "/dashboard/bursary", icon: Wallet, label: "Bursary Management" },
   { href: "/dashboard/reports", icon: PieChart, label: "Reports & Analytics" },
   { href: "/dashboard/matching", icon: Shuffle, label: "Matching Engine" },
@@ -47,7 +50,7 @@ const managementNav = [
   { href: "/dashboard/asatizah", icon: BookUser, label: "View Asatizah" },
   { href: "/dashboard/students", icon: Users, label: "View Students" },
   { href: "/dashboard/courses", icon: BookCopy, label: "View Courses" },
-  { href: "/dashboard/attendance", icon: CalendarCheck, label: "Attendance Logs" }, // Added here
+  { href: "/dashboard/attendance", icon: CalendarCheck, label: "Attendance Logs" }, 
   { href: "/dashboard/bursary", icon: Wallet, label: "Bursary Management" },
   { href: "/dashboard/reports", icon: PieChart, label: "Reports & Analytics" },
 ];
@@ -55,7 +58,7 @@ const managementNav = [
 const teacherNav:any[] = [
     { href: "/dashboard", icon: Home, label: "Dashboard" },
     { href: "/dashboard/courses", icon: BookCopy, label: "My Courses" },
-    { href: "/dashboard/attendance", icon: CalendarCheck, label: "Attendance" }, // Added here
+    { href: "/dashboard/attendance", icon: CalendarCheck, label: "Attendance" },
 ];
 
 const studentNav:any[] = [
@@ -86,11 +89,22 @@ export default function AppSidebar() {
   const adminEmails = ['ath@mtfa.org', 'atika@mtfa.org', 'nasrullah@mtfa.org'];
   const isDevAdmin = firebaseUser?.email && adminEmails.includes(firebaseUser.email);
   
-  const userRole: UserRole = isDevAdmin ? "admin" : (userProfile?.role || "student");
+  const realUserRole: UserRole = isDevAdmin ? "admin" : (userProfile?.role || "student");
   
-  const currentNav = navItems[userRole] || [];
+  // Role Simulation State
+  const [simulatedRole, setSimulatedRole] = useState<UserRole | null>(null);
 
-  if (!firebaseUser) return null; // Or return a skeleton sidebar
+  // Sync simulated role with real role initially
+  useEffect(() => {
+      if (realUserRole && !simulatedRole) {
+          setSimulatedRole(realUserRole);
+      }
+  }, [realUserRole, simulatedRole]);
+
+  const activeRole = simulatedRole || realUserRole;
+  const currentNav = navItems[activeRole] || [];
+
+  if (!firebaseUser) return null; 
 
   return (
     <Sidebar>
@@ -99,7 +113,12 @@ export default function AppSidebar() {
           <Logo className="size-10 text-sidebar-primary" />
           <div className="flex flex-col">
             <h2 className="text-base font-semibold font-headline text-sidebar-foreground">Ihsan Hub</h2>
-            <Badge variant="secondary" className="w-fit capitalize">{userRole}</Badge>
+            <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="w-fit capitalize">{activeRole}</Badge>
+                {isDevAdmin && activeRole !== "admin" && (
+                    <Badge variant="outline" className="text-[10px] h-5 px-1">View Mode</Badge>
+                )}
+            </div>
           </div>
         </div>
       </SidebarHeader>
@@ -122,6 +141,25 @@ export default function AppSidebar() {
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter>
+        {isDevAdmin && (
+            <div className="px-2 mb-2">
+                <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
+                    <Eye className="h-3 w-3" />
+                    <span>Simulate View</span>
+                </div>
+                <Select value={activeRole} onValueChange={(val) => setSimulatedRole(val as UserRole)}>
+                    <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="management">Management</SelectItem>
+                        <SelectItem value="teacher">Teacher</SelectItem>
+                        <SelectItem value="student">Student</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+        )}
         <Separator className="my-2 bg-sidebar-border" />
         <SidebarMenu>
           <SidebarMenuItem>

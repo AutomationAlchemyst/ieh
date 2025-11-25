@@ -46,35 +46,17 @@ export default function RegistrationsPage() {
 
   const processedData = useMemo(() => {
     if (!registrations) return [];
-    const allApplicants: ApplicantRow[] = [];
     
-    registrations.forEach(reg => {
-      // Add the main applicant
-      allApplicants.push({
+    return registrations.map(reg => ({
         ...reg,
-        status: reg.status || "New", // Default to New if undefined
-        note: '', // Main applicants have no note
+        id: reg.id,
+        name: reg.name,
+        contactNo: reg.contactNo,
         wantsToHost: reg.wantsToHost || 'No',
         createdAt: reg.createdAt,
-      } as ApplicantRow);
-      
-      // Add any additional applicants
-      if (reg.additionalApplicants) {
-        reg.additionalApplicants.forEach((applicant: any) => {
-          allApplicants.push({
-            ...reg, // Copy main registration details (id, status, etc.)
-            name: applicant.name, // Overwrite with additional applicant's name
-            ageGroup: applicant.ageGroup,
-            preferredSubject: applicant.preferredSubject,
-            note: `Additional Applicant from ${reg.name}`, // Add a note
-            wantsToHost: reg.wantsToHost || 'No',
-            createdAt: reg.createdAt,
-            status: reg.status || "New",
-          } as ApplicantRow);
-        });
-      }
-    });
-    return allApplicants;
+        status: reg.status || "New",
+        note: reg.isMainApplicant ? '' : 'Additional Applicant',
+    } as ApplicantRow));
   }, [registrations]);
 
   const filteredData = useMemo(() => {

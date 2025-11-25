@@ -109,52 +109,58 @@ export function BeneficiaryRegistrationForm() {
     }
 
     const registrationsCollection = collection(firestore, 'registrations');
-
-    const additionalApplicants = [];
-    if (values.registeringApplicant2 && values.applicant2) additionalApplicants.push(values.applicant2);
-    if (values.registeringApplicant3 && values.applicant3) additionalApplicants.push(values.applicant3);
-    if (values.registeringApplicant4 && values.applicant4) additionalApplicants.push(values.applicant4);
-    if (values.registeringApplicant5 && values.applicant5) additionalApplicants.push(values.applicant5);
-
-        const newRegistration: any = {
-      // Main Applicant Info
-      name: values.name,
-      email: values.email,
+    const submissionGroupId = crypto.randomUUID(); // Group ID to link them together
+    const commonData = {
+      // Contact & Household Info (Shared)
       contactNo: values.contactNo,
+      email: values.email,
       homeAddress: values.homeAddress,
-      
-      // Hosting Info
       wantsToHost: values.wantsToHost,
+      paymentMethod: values.wantsToHost === 'Yes' ? values.paymentMethod : undefined,
+      paymentDetails: values.wantsToHost === 'Yes' ? values.paymentDetails : undefined,
+      mediaConsent: values.mediaConsent,
+      pdpaConsent: values.pdpaConsent,
+      submittedBy: user.uid,
+      createdAt: serverTimestamp(),
+      submissionGroupId: submissionGroupId,
+      status: "New" as const,
+    };
 
-      // Main Applicant Preferences
+    // 1. Prepare Main Applicant
+    const mainApplicant = {
+      ...commonData,
+      name: values.name,
       ageGroup: values.ageGroup,
       preferredSubject: values.preferredSubject,
       preferredDay: values.preferredDay,
       preferredTimeSlot: values.preferredTimeSlot,
-
-      // Additional Applicants
-      additionalApplicants: additionalApplicants,
-
-      // Consents
-      mediaConsent: values.mediaConsent,
-      pdpaConsent: values.pdpaConsent,
-
-      // System fields
-      submittedBy: user.uid,
-      createdAt: serverTimestamp(),
-      status: "New" as const,
+      isMainApplicant: true,
     };
 
-    if (newRegistration.wantsToHost === 'Yes') {
-      newRegistration.paymentMethod = values.paymentMethod;
-      newRegistration.paymentDetails = values.paymentDetails;
+    // 2. Prepare Additional Applicants
+    const applicantsToSave = [mainApplicant];
+
+    if (values.registeringApplicant2 && values.applicant2) {
+      applicantsToSave.push({ ...commonData, ...values.applicant2, isMainApplicant: false });
+    }
+    if (values.registeringApplicant3 && values.applicant3) {
+      applicantsToSave.push({ ...commonData, ...values.applicant3, isMainApplicant: false });
+    }
+    if (values.registeringApplicant4 && values.applicant4) {
+      applicantsToSave.push({ ...commonData, ...values.applicant4, isMainApplicant: false });
+    }
+    if (values.registeringApplicant5 && values.applicant5) {
+      applicantsToSave.push({ ...commonData, ...values.applicant5, isMainApplicant: false });
     }
 
-    addDocumentNonBlocking(registrationsCollection, newRegistration);
+    // 3. Save All Documents
+    applicantsToSave.forEach(applicant => {
+        addDocumentNonBlocking(registrationsCollection, applicant);
+    });
 
     toast({
       title: "Registration Submitted!",
-      description: `The registration for "${values.name}" has been successfully submitted.`,
+      description: `Successfully registered ${applicantsToSave.length} applicant(s).`,
     });
 
     router.refresh();
